@@ -210,5 +210,29 @@ class TestDataProcessor(unittest.TestCase):
         self.assertIn('Felt quite isolated', explanation)
         self.assertIn("rainy winters reduce outdoor walkability", explanation)
 
+    def test_calculate_trust_indices(self):
+        # Hotel H006: 50% verified (avg 5.0), 50% unverified (avg 1.0)
+        # verified_ratio = 0.5. discrepancy = 4.0. consistency = 0.0.
+        # Trust = 0.5 * 0.5 + 0.5 * 0.0 = 0.25
+        # Hotel H007: 100% verified (avg 4.0), 0% unverified
+        # verified_ratio = 1.0. discrepancy = 0.0. consistency = 1.0.
+        # Trust = 0.5 * 1.0 + 0.5 * 1.0 = 1.0
+        mock_reviews = [
+            # H006
+            {"hotel_id": "H006", "verified": True, "rating": "5.0"},
+            {"hotel_id": "H006", "verified": True, "rating": "5.0"},
+            {"hotel_id": "H006", "verified": False, "rating": "1.0"},
+            {"hotel_id": "H006", "verified": False, "rating": "1.0"},
+            # H007
+            {"hotel_id": "H007", "verified": True, "rating": "4.0"},
+            {"hotel_id": "H007", "verified": True, "rating": "4.0"}
+        ]
+        
+        trust_indices = data_processor.calculate_trust_indices(mock_reviews)
+        self.assertIn("H006", trust_indices)
+        self.assertIn("H007", trust_indices)
+        self.assertEqual(trust_indices["H006"], 0.25)
+        self.assertEqual(trust_indices["H007"], 1.0)
+
 if __name__ == "__main__":
     unittest.main()
