@@ -77,5 +77,39 @@ class TestDataProcessor(unittest.TestCase):
         for aspect in data_processor.ASPECTS:
             self.assertEqual(hotel_scores[aspect], 4.5)
 
+    def test_detect_quality_anomalies(self):
+        # Mock reviews for Hotel H003
+        # Max date is 2025-12-01. Cutoff is 60 days before (2025-10-02).
+        # Historic split (2025-01-01): 3 positive cleanliness, 0 negative. Score = 5.0.
+        # Recent split (2025-12-01): 0 positive cleanliness, 3 negative. Score = 1.0.
+        # Drop = (1.0 - 5.0)/5.0 = -0.80 (80% drop)
+        mock_reviews = [
+            {
+                "hotel_id": "H003",
+                "hotel_name": "Problematic Inn",
+                "rating": "5.0",
+                "review_date": "2025-01-01",
+                "review_text": "Spotlessly clean room and an immaculate bathroom. Everything was sparkling clean, clearly very well maintained. Housekeeping was impeccable; the room was fresh every single day."
+            },
+            {
+                "hotel_id": "H003",
+                "hotel_name": "Problematic Inn",
+                "rating": "1.0",
+                "review_date": "2025-12-01",
+                "review_text": "Room wasn't clean on arrival — found hair in the bathroom. Housekeeping was inconsistent and the carpets looked grubby."
+            }
+        ]
+        
+        anomalies = data_processor.detect_quality_anomalies(mock_reviews)
+        
+        self.assertEqual(len(anomalies), 1)
+        anomaly = anomalies[0]
+        self.assertEqual(anomaly["hotel_id"], "H003")
+        self.assertEqual(anomaly["hotel_name"], "Problematic Inn")
+        self.assertEqual(anomaly["aspect"], "Cleanliness")
+        self.assertEqual(anomaly["historic_score"], 5.0)
+        self.assertEqual(anomaly["recent_score"], 1.0)
+        self.assertEqual(anomaly["drop_percentage"], -80.0)
+
 if __name__ == "__main__":
     unittest.main()
