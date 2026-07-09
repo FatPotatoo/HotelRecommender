@@ -151,6 +151,7 @@ class Recommender:
         """Precompute hotel scorecard matrix and load profiles."""
         self.reviews = data_processor.load_data(reviews_path)
         self.profiles = get_user_profiles(profiles_path)
+        self.review_embeddings_cache = {}
         
         # Precompute scorecards
         self.scorecard = data_processor.compile_aspect_scorecard(self.reviews)
@@ -247,33 +248,75 @@ class Recommender:
         hotel_scores.sort(key=lambda x: (x["match_score"], x["overall_rating"]), reverse=True)
         recommended = hotel_scores[:top_n]
         
-        # 4. Fetch Evidence Citations
+        # 4. Fetch Evidence Citations using Structured RAG
         # Identify core aspects the user cares about (weight > 0.15)
         core_aspects = [aspect for aspect, w in weights.items() if w > 0.15]
         
+        # Precompute query embedding for vector similarity ranking
+        try:
+            model = sentiment_engine.get_sentence_transformer()
+            query_emb = model.encode(desc, convert_to_tensor=True)
+            from sentence_transformers import util
+            import torch
+        except Exception:
+            model = None
+            
         for rec in recommended:
             hotel_id = rec["hotel_id"]
             hotel_reviews = [r for r in self.reviews if r["hotel_id"] == hotel_id]
             
-            # Score reviews based on matching positive sentences
-            scored_reviews = []
+            # A. Structured Filter: keep reviews that contain positive mentions of core aspects
+            candidate_reviews = []
             for r in hotel_reviews:
-                match_count = 0
+                has_pos_match = False
                 sentences = data_processor.segment_sentences(r["review_text"])
                 for sentence in sentences:
                     res = sentiment_engine.extract_sentence_aspect_sentiment(sentence)
                     if res["aspect"] in core_aspects and res["sentiment"] == 1:
-                        match_count += 1
-                        
-                if match_count > 0:
-                    scored_reviews.append((r, match_count))
+                        has_pos_match = True
+                        break
+                if has_pos_match:
+                    candidate_reviews.append(r)
                     
-            # Sort reviews by match count descending, secondary by review rating descending
-            scored_reviews.sort(key=lambda x: (x[1], float(x[0]["rating"])), reverse=True)
+            # Fallback if no reviews matched the positive aspect filter
+            if not candidate_reviews:
+                candidate_reviews = hotel_reviews
+                
+            # B. Semantic Ranker (Vector Search + Review Rating)
+            scored_candidates = []
+            if model is not None and candidate_reviews:
+                try:
+                    # Find which review IDs are not in cache
+                    uncached_reviews = [r for r in candidate_reviews if r["review_id"] not in self.review_embeddings_cache]
+                    if uncached_reviews:
+                        uncached_texts = [r["review_text"] for r in uncached_reviews]
+                        uncached_embs = model.encode(uncached_texts, convert_to_tensor=True)
+                        for idx, r in enumerate(uncached_reviews):
+                            self.review_embeddings_cache[r["review_id"]] = uncached_embs[idx]
+                            
+                    # Load embeddings from cache and stack
+                    import torch
+                    review_embs = torch.stack([self.review_embeddings_cache[r["review_id"]] for r in candidate_reviews])
+                    
+                    cos_scores = util.cos_sim(query_emb, review_embs)[0]
+                    for idx, r in enumerate(candidate_reviews):
+                        sim_score = cos_scores[idx].item()
+                        # Normalize rating to [0, 1] range
+                        rating_val = (float(r["rating"]) - 1.0) / 4.0
+                        blended_score = 0.70 * sim_score + 0.30 * rating_val
+                        scored_candidates.append((r, blended_score))
+                except Exception:
+                    for r in candidate_reviews:
+                        scored_candidates.append((r, float(r["rating"])))
+            else:
+                for r in candidate_reviews:
+                    scored_candidates.append((r, float(r["rating"])))
+                    
+            scored_candidates.sort(key=lambda x: x[1], reverse=True)
             
-            # Retrieve top 3
+            # Select top 3 citations
             citations = []
-            for r, count in scored_reviews[:3]:
+            for r, score in scored_candidates[:3]:
                 citations.append({
                     "review_id": r["review_id"],
                     "text": r["review_text"]
