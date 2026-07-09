@@ -1,0 +1,89 @@
+Total Unique Sentences: 87
+--------------------------------------------------------------------------------
+01. [4229 occurrences] Second time staying at this property.
+02. [4218 occurrences] Stayed here for a few nights.
+03. [4145 occurrences] Stopped here on a longer trip.
+04. [4110 occurrences] We had high hopes for this stay.
+05. [4103 occurrences] Booked this for a short trip.
+06. [4041 occurrences] Chose this hotel based on the reviews.
+07. [3447 occurrences] Decent for one night, not for longer.
+08. [3390 occurrences] Would book again without hesitation.
+09. [3388 occurrences] Mixed feelings overall but mostly positive.
+10. [3359 occurrences] Overall a solid choice.
+11. [3302 occurrences] Would consider returning.
+12. [3280 occurrences] Not sure I'd come back.
+13. [1781 occurrences] The level of refinement and personal service was world-class.
+14. [1733 occurrences] Impeccable five-star service, every tiny detail considered.
+15. [1703 occurrences] Pure luxury from check-in to checkout — utterly indulgent.
+16. [1697 occurrences] Don't come here for nightlife — everything shuts early and it's sleepy.
+17. [1646 occurrences] Dead quiet at night with nothing to do in the area.
+18. [1631 occurrences] The spa was a highlight — incredible massages and a serene relaxation pool.
+19. [1537 occurrences] Loved that it sat in a genuine local neighborhood, not a tourist bubble.
+20. [1509 occurrences] Wonderful wellness facilities; the sauna and treatments left us completely refreshed.
+21. [1499 occurrences] The business center and conference facilities were excellent, ideal for work trips.
+22. [1499 occurrences] Great setup for business travel: fast reliable internet and a proper desk.
+23. [1487 occurrences] Great base for experiencing the real culture — artisans and street food all around.
+24. [1478 occurrences] Meeting rooms were well-equipped and the WiFi was rock solid for video calls.
+25. [1471 occurrences] Overpriced for what you actually get.
+26. [1463 occurrences] Front desk was friendly and incredibly helpful with every request.
+27. [1460 occurrences] A proper retreat: yoga in the morning and an excellent spa in the afternoon.
+28. [1442 occurrences] Excellent value for the price — far better than I expected for the rate.
+29. [1433 occurrences] Steps away from authentic local markets and family-run eateries.
+30. [1425 occurrences] Far too expensive for such an average, no-frills experience.
+31. [1408 occurrences] Spotlessly clean room and an immaculate bathroom.
+32. [1391 occurrences] Affordable and comfortable, a smart choice for a tighter budget.
+33. [1391 occurrences] The team remembered our names and anticipated everything we needed.
+34. [1376 occurrences] Great bang for your buck; you really get a lot for what you pay.
+35. [1353 occurrences] Staff went above and beyond — genuinely warm, attentive service throughout.
+36. [1338 occurrences] Fully step-free with a spacious, well-designed accessible room.
+37. [1330 occurrences] Everything was sparkling clean, clearly very well maintained.
+38. [1318 occurrences] Just steps from a beautiful stretch of beach with loungers ready.
+39. [1312 occurrences] No proper workspace and the internet was far too slow for business.
+40. [1307 occurrences] You can't beat the location — everything was a short stroll away.
+41. [1299 occurrences] Getting around was easy with my wheelchair; ramps and lifts everywhere.
+42. [1296 occurrences] Excellent accessibility — wide doorways, roll-in shower, and helpful staff.
+43. [1293 occurrences] Right in the heart of the city, so easy to get everywhere on foot.
+44. [1286 occurrences] Room wasn't clean on arrival — found hair in the bathroom.
+45. [1286 occurrences] Direct beach access made the whole stay feel like a proper getaway.
+46. [1286 occurrences] Great bars and clubs right around the corner, perfect for a night out.
+47. [1283 occurrences] WiFi kept dropping during calls, which was frustrating for work.
+48. [1278 occurrences] Buzzing area after dark with plenty of lively spots within walking distance.
+49. [1274 occurrences] Service was indifferent and slow throughout the stay.
+50. [1273 occurrences] Perfect central location, walking distance to all the main sights.
+51. [1273 occurrences] Housekeeping was impeccable; the room was fresh every single day.
+52. [1264 occurrences] Woke up to the sea every morning — the beachfront setting was perfect.
+53. [1264 occurrences] Front desk was rude and unhelpful whenever we asked for anything.
+54. [1238 occurrences] Housekeeping was inconsistent and the carpets looked grubby.
+55. [1234 occurrences] The rooftop bar was packed and fun, and the nightlife nearby was excellent.
+56. [1197 occurrences] Cramped rooms and nothing for the little ones to do.
+57. [1185 occurrences] Not great for kids — no facilities and the staff seemed annoyed by children.
+58. [1170 occurrences] On-site restaurant was a highlight — beautifully prepared local dishes.
+59. [1164 occurrences] Wellness facilities were tired and the pool was often closed.
+60. [1153 occurrences] The breakfast spread was extensive and genuinely delicious.
+61. [1120 occurrences] Soundproofing was superb, not a peep from the street.
+62. [1115 occurrences] Outstanding dining; we never felt the need to eat elsewhere.
+63. [1114 occurrences] Felt like a generic tourist zone with no local character at all.
+64. [1107 occurrences] Room was noisy due to nearby construction and thin walls.
+65. [1105 occurrences] Very touristy strip; hard to find anything authentic or local nearby.
+66. [1090 occurrences] Slept beautifully — very quiet despite being central.
+67. [1085 occurrences] Constant street noise made it hard to sleep.
+68. [1050 occurrences] Plenty for children to do and the family suite had loads of space.
+69. [1043 occurrences] The neighborhood felt sketchy after dark and I didn't feel safe coming back alone.
+70. [1035 occurrences] Room was wonderfully peaceful and the blackout curtains were perfect.
+71. [1030 occurrences] Poorly lit surroundings made me uneasy walking back at night.
+72. [1029 occurrences] Not accessible — no ramps and the lift didn't reach all floors.
+73. [1024 occurrences] The kids loved the pool and the staff were wonderful with our toddler.
+74. [1005 occurrences] The spa was small and underwhelming for a property of this class.
+75. [965 occurrences] Step-heavy layout made it very difficult with reduced mobility.
+76. [957 occurrences] Fantastic for families — connecting rooms, a kids' club, and high chairs at breakfast.
+77. [906 occurrences] The restaurant was disappointing and the menu was very limited.
+78. [871 occurrences] Breakfast was overpriced at $45 and surprisingly basic.
+79. [790 occurrences] The location was far from everything and required long, expensive taxi rides.
+80. [756 occurrences] Felt quite isolated — nothing within walking distance.
+81. [755 occurrences] Quiet, safe neighborhood — I never once felt uncomfortable coming back late.
+82. [743 occurrences] As a solo traveler I felt very secure here, both in the hotel and the surrounding streets.
+83. [714 occurrences] The beach was a 20-minute drive away, not 'on the beach' as advertised.
+84. [696 occurrences] Felt completely safe walking back alone at night; the area is well-lit and security was attentive.
+85. [679 occurrences] No real beach access — just a rocky shore you couldn't use.
+86. [632 occurrences] Called itself five-star but the service felt distinctly mid-range.
+87. [609 occurrences] Didn't live up to its luxury billing at all.
