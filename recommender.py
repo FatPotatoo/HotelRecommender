@@ -67,6 +67,21 @@ def get_archetype_embeddings():
         _archetype_embeddings = model.encode(descs, convert_to_tensor=True)
     return _archetype_embeddings
 
+def extract_traveler_cohort(desc: str) -> str:
+    """Extracts target traveler type cohort from traveler description."""
+    desc_lower = desc.lower()
+    if any(w in desc_lower for w in ["solo", "single", "alone", "myself", "independent"]):
+        return "solo"
+    if any(w in desc_lower for w in ["family", "kid", "child", "toddler", "parent", "son", "daughter"]):
+        return "family"
+    if any(w in desc_lower for w in ["couple", "romantic", "honeymoon", "partner", "wife", "husband", "getaway"]):
+        return "couple"
+    if any(w in desc_lower for w in ["business", "corporate", "conference", "work", "meeting", "freelancer", "road-warrior"]):
+        return "business"
+    if any(w in desc_lower for w in ["group", "friends", "bachelor", "colleagues"]):
+        return "group"
+    return "leisure"
+
 def get_user_profiles(profiles_path: str) -> dict:
     """Load and parse traveler profiles from JSON file."""
     with open(profiles_path, "r", encoding="utf-8") as f:
@@ -268,6 +283,7 @@ class Recommender:
         # 4. Fetch Evidence Citations using Structured RAG
         # Identify core aspects the user cares about (weight > 0.15)
         core_aspects = [aspect for aspect, w in weights.items() if w > 0.15]
+        target_cohort = extract_traveler_cohort(desc)
         
         # Precompute query embedding for vector similarity ranking
         try:
@@ -281,10 +297,14 @@ class Recommender:
         for rec in recommended:
             hotel_id = rec["hotel_id"]
             hotel_reviews = [r for r in self.reviews if r["hotel_id"] == hotel_id]
+            cohort_reviews = [r for r in hotel_reviews if r.get("traveler_type") == target_cohort]
+            
+            # Prioritize the cohort pool if there are enough reviews, otherwise default to all
+            reviews_pool = cohort_reviews if len(cohort_reviews) >= 3 else hotel_reviews
             
             # A. Structured Filter: keep reviews that contain positive mentions of core aspects
             candidate_reviews = []
-            for r in hotel_reviews:
+            for r in reviews_pool:
                 match_count = 0
                 sentences = data_processor.segment_sentences(r["review_text"])
                 for sentence in sentences:
