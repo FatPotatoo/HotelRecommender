@@ -93,7 +93,7 @@ def extract_aspect_weights(desc: str) -> dict:
         max_idx = torch.argmax(cos_scores).item()
         max_score = cos_scores[max_idx].item()
         
-        if max_score > 0.85:
+        if max_score > 0.60:
             matched_arch = _archetype_names[max_idx]
             weights = ARCHETYPES[matched_arch]["weights"].copy()
             

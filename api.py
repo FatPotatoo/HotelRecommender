@@ -98,23 +98,7 @@ def get_hotel_seasonality(hotel_id: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/api/trust_indices")
-def get_trust_indices():
-    if rec_engine is None:
-        raise HTTPException(status_code=500, detail="Recommender engine not loaded")
-    try:
-        trust_scores = data_processor.calculate_trust_indices(rec_engine.reviews)
-        result = []
-        for hid, score in trust_scores.items():
-            meta = rec_engine.hotel_meta[hid]
-            result.append({
-                "hotel_id": hid,
-                "hotel_name": meta["hotel_name"],
-                "trust_index": score
-            })
-        return result
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+
 
 if __name__ == "__main__":
     uvicorn.run("api:app", host="127.0.0.1", port=8000, reload=True)

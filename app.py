@@ -111,7 +111,7 @@ else:
 
 page = st.sidebar.radio("Navigate Pages", [
     "🔍 Personalized Recommender", 
-    "📈 Operations & Trust Monitor", 
+    "📈 Operations Monitor", 
     "🌦️ Seasonality Explorer"
 ])
 
@@ -220,48 +220,31 @@ if page == "🔍 Personalized Recommender":
     else:
         st.warning("Please connect the backend API server first.")
 
-# PAGE 2: Operations & Trust Monitor
-elif page == "📈 Operations & Trust Monitor":
-    st.title("📈 Operations & Trust Monitor")
-    st.markdown("Inspect operational quality indicators: drift-isolated quality anomalies and verifiability trust indices.")
+# PAGE 2: Operations Monitor
+elif page == "📈 Operations Monitor":
+    st.title("📈 Operations Monitor")
+    st.markdown("Inspect operational quality indicators: drift-isolated quality anomalies.")
     
     if api_active:
-        tab1, tab2 = st.tabs(["⚠️ Isolated Quality Anomalies", "🛡️ Trust Index Scoreboard"])
+        st.subheader("Drift-Isolated Quality Anomalies (Last 60 Days)")
+        st.markdown("These alerts highlight hotels whose cleanliness or service ratings dropped by >20% in the last 60 days, excluding drops that occurred in the previous year (treating them as seasonal drift).")
         
-        with tab1:
-            st.subheader("Drift-Isolated Quality Anomalies (Last 60 Days)")
-            st.markdown("These alerts highlight hotels whose cleanliness or service ratings dropped by >20% in the last 60 days, excluding drops that occurred in the previous year (treating them as seasonal drift).")
+        with st.spinner("Fetching anomalies..."):
+            anomalies = requests.get(f"{API_URL}/anomalies").json()
             
-            with st.spinner("Fetching anomalies..."):
-                anomalies = requests.get(f"{API_URL}/anomalies").json()
-                
-            if anomalies:
-                for a in anomalies:
-                    st.markdown(f"""
-                    <div class="anomaly-alert">
-                        <div class="anomaly-title">🚨 Operations Alert: {a['hotel_name']} ({a['hotel_id']})</div>
-                        <div>Aspect: <b>{a['aspect']}</b> | Rating Drop: <b style="color: #EF4444;">{a['drop_percentage']}%</b></div>
-                        <div style="font-size: 13px; margin-top: 4px; color: #FCA5A5;">
-                            Historic Average Aspect Score: {a['historic_score']:.2f} | Recent 60 Days Aspect Score: {a['recent_score']:.2f}
-                        </div>
+        if anomalies:
+            for a in anomalies:
+                st.markdown(f"""
+                <div class="anomaly-alert">
+                    <div class="anomaly-title">🚨 Operations Alert: {a['hotel_name']} ({a['hotel_id']})</div>
+                    <div>Aspect: <b>{a['aspect']}</b> | Rating Drop: <b style="color: #EF4444;">{a['drop_percentage']}%</b></div>
+                    <div style="font-size: 13px; margin-top: 4px; color: #FCA5A5;">
+                        Historic Average Aspect Score: {a['historic_score']:.2f} | Recent 60 Days Aspect Score: {a['recent_score']:.2f}
                     </div>
-                    """, unsafe_allow_html=True)
-            else:
-                st.success("✅ No recent operational quality anomalies detected. All recent dips are classified as seasonal drifts.")
-                
-        with tab2:
-            st.subheader("Verified Purchase Trust Index Scoreboard")
-            st.markdown("The Trust Index measures review verifiability ($0.0$ to $1.0$) based on the ratio of verified purchases and consistency between verified/unverified ratings.")
-            
-            with st.spinner("Fetching trust scores..."):
-                trust_data = requests.get(f"{API_URL}/trust_indices").json()
-                
-            df_trust = pd.DataFrame(trust_data)
-            df_trust.columns = ["Hotel ID", "Hotel Name", "Trust Index Rating"]
-            df_trust = df_trust.sort_values(by="Trust Index Rating", ascending=False).reset_index(drop=True)
-            
-            # Show interactive dataframe
-            st.dataframe(df_trust, use_container_width=True)
+                </div>
+                """, unsafe_allow_html=True)
+        else:
+            st.success("✅ No recent operational quality anomalies detected. All recent dips are classified as seasonal drifts.")
     else:
         st.warning("Please connect the backend API server first.")
 
