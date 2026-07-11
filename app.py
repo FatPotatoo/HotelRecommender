@@ -87,6 +87,51 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
+import re
+
+def get_desired_dimensions(desc: str) -> list[str]:
+    """Extracts key travel dimensions from a traveler profile description."""
+    dimensions = []
+    desc_lower = desc.lower()
+    
+    if "safety" in desc_lower or "safe" in desc_lower:
+        dimensions.append("safety")
+    if "culture" in desc_lower or "market" in desc_lower:
+        dimensions.append("local_culture")
+    if "central" in desc_lower or "office district" in desc_lower or "walkable" in desc_lower:
+        dimensions.append("location_central")
+    if "wifi" in desc_lower or "internet" in desc_lower:
+        dimensions.append("wifi")
+    if "meeting" in desc_lower or "workspace" in desc_lower:
+        dimensions.append("meeting_space")
+    if "quiet" in desc_lower or "peaceful" in desc_lower or "noise" in desc_lower:
+        dimensions.append("quiet_room")
+    if "budget" in desc_lower or "cheap" in desc_lower or "shoestring" in desc_lower:
+        if "tight" in desc_lower or "low" in desc_lower or "cheap" in desc_lower:
+            dimensions.append("low_budget")
+        elif "mid-range" in desc_lower or "mid_range" in desc_lower:
+            dimensions.append("mid_range_budget")
+        else:
+            dimensions.append("value_for_money")
+    if "luxury" in desc_lower or "discerning" in desc_lower or "five-star" in desc_lower or "refinement" in desc_lower:
+        dimensions.append("luxury_service")
+    if "spa" in desc_lower or "wellness" in desc_lower:
+        dimensions.append("spa_and_wellness")
+    if "kid" in desc_lower or "child" in desc_lower or "toddler" in desc_lower or "family" in desc_lower:
+        dimensions.append("family_friendly")
+    if "direct flight" in desc_lower:
+        dimensions.append("direct_flights")
+    if "accessibility" in desc_lower or "wheelchair" in desc_lower or "mobility" in desc_lower or "step-free" in desc_lower:
+        dimensions.append("accessibility")
+        
+    if not dimensions:
+        parts = [p.strip() for p in desc.split(",") if len(p.strip()) > 3]
+        for part in parts[:4]:
+            clean = re.sub(r'[^a-z0-9\s]', '', part.lower())
+            clean = "_".join(clean.split())
+            dimensions.append(clean)
+    return dimensions
+
 def check_api_status():
     """Verify if the backend API server is running."""
     try:
@@ -132,10 +177,11 @@ if page == "🔍 Personalized Recommender":
         
         if mode == "Select Predefined Profile":
             selected_profile_id = st.selectbox("Predefined Profile", list(profiles.keys()), 
-                                               format_func=lambda x: f"{x}: {profiles[x][:60]}...")
+                                               format_func=lambda x: f"{x}: {profiles[x]}")
             query_str = selected_profile_id
             description = profiles[selected_profile_id]
-            st.info(f"**Profile Description:** {description}")
+            desired_dims = get_desired_dimensions(description)
+            st.markdown("**Desired Dimensions:** " + " ".join([f"`{dim}`" for dim in desired_dims]))
         else:
             query_str = st.text_area("Traveler Needs Description", 
                                      placeholder="Describe who you are, what you need (e.g. fast wifi, quiet room), and any mobility constraints (e.g. wheelchair access)...")
@@ -174,9 +220,9 @@ if page == "🔍 Personalized Recommender":
                         </div>
                         <div class="score-badge">Match Score: {hotel['match_score']:.2f}</div>
                     </div>
-                    <div style="display: flex; gap: 40px; margin-bottom: 15px;">
+                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 15px;">
                         <div>
-                            <span class="rating-label">Overall Customer Rating:</span> 
+                            <span class="rating-label">Overall Rating:</span> 
                             <span class="rating-val">★ {hotel['overall_rating']:.2f}</span>
                         </div>
                         <div>
@@ -194,6 +240,14 @@ if page == "🔍 Personalized Recommender":
                         <div>
                             <span class="rating-label">Value:</span> 
                             <span class="rating-val">{hotel['aspect_scores']['Value']:.1f}</span>
+                        </div>
+                        <div>
+                            <span class="rating-label">WiFi/Quietness:</span> 
+                            <span class="rating-val">{hotel['aspect_scores']['WiFi/Quietness']:.1f}</span>
+                        </div>
+                        <div>
+                            <span class="rating-label">Family-Friendliness:</span> 
+                            <span class="rating-val">{hotel['aspect_scores']['Family-Friendliness']:.1f}</span>
                         </div>
                         <div>
                             <span class="rating-label">Accessibility:</span> 
