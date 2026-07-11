@@ -178,8 +178,8 @@ class TestDataProcessor(unittest.TestCase):
         
         explanation = trend["explanation"]
         self.assertIn("Location ratings for this hotel exhibit consistent seasonal fluctuations", explanation)
-        self.assertIn("peaking in June, July, August", explanation)
-        self.assertIn("dipping in January, February, December", explanation)
+        self.assertIn("peaking in Summer", explanation)
+        self.assertIn("dipping in Winter", explanation)
         self.assertIn('Felt quite isolated', explanation)
 
     def test_analyze_seasonal_trends_stable(self):

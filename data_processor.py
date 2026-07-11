@@ -287,11 +287,44 @@ def detect_quality_anomalies(reviews: list[dict], threshold: float = -0.20) -> l
                         
     return anomalies
 
+SOUTHERN_CITIES = {"Sydney", "Cape Town", "Lima"}
+TROPICAL_CITIES = {"Bali", "Bangkok", "Mumbai", "Singapore", "Mexico City"}
+
+def get_season_name(month: int, hotel_name: str) -> str:
+    """Classifies calendar month into local season dynamically based on hotel city."""
+    city = "Unknown"
+    if ", " in hotel_name:
+        city = hotel_name.split(", ")[-1].strip()
+        
+    if city in SOUTHERN_CITIES:
+        if month in [12, 1, 2]:
+            return "Summer"
+        elif month in [3, 4, 5]:
+            return "Autumn"
+        elif month in [6, 7, 8]:
+            return "Winter"
+        else:
+            return "Spring"
+    elif city in TROPICAL_CITIES:
+        if month in [11, 12, 1, 2, 3, 4]:
+            return "Dry Season"
+        else:
+            return "Wet Season"
+    else:  # Northern Hemisphere default
+        if month in [6, 7, 8]:
+            return "Summer"
+        elif month in [9, 10, 11]:
+            return "Autumn"
+        elif month in [12, 1, 2]:
+            return "Winter"
+        else:
+            return "Spring"
+
 def analyze_seasonal_trends(reviews: list[dict]) -> dict:
     """
-    Detects consistent, Year-Over-Year seasonality patterns for each hotel.
+    Detects consistent, Year-Over-Year seasonality patterns for each hotel grouped by local seasons.
     Removes dependency on hardcoded city templates, relying strictly on consistency of 
-    monthly aspect deviations from the annual mean in both 2024 and 2025.
+    seasonal aspect deviations from the annual mean in both 2024 and 2025.
     
     Returns:
         dict: { hotel_id: { "seasonal_aspect": str, "explanation": str, ... } }
@@ -310,18 +343,28 @@ def analyze_seasonal_trends(reviews: list[dict]) -> dict:
     trends = {}
     
     for hotel_id, r_list in hotel_reviews.items():
-        # Structure: { aspect: { year: { month: { "pos": 0, "neg": 0 } } } }
+        hotel_name = r_list[0].get("hotel_name", "Unknown Hotel")
+        city = "Unknown"
+        if ", " in hotel_name:
+            city = hotel_name.split(", ")[-1].strip()
+            
+        if city in TROPICAL_CITIES:
+            seasons_list = ["Dry Season", "Wet Season"]
+        else:
+            seasons_list = ["Spring", "Summer", "Autumn", "Winter"]
+            
+        # Structure: { aspect: { year: { season: { "pos": 0, "neg": 0 } } } }
         aspect_counts = {
             aspect: {
-                2024: {m: {"pos": 0, "neg": 0} for m in range(1, 13)},
-                2025: {m: {"pos": 0, "neg": 0} for m in range(1, 13)}
+                2024: {s: {"pos": 0, "neg": 0} for s in seasons_list},
+                2025: {s: {"pos": 0, "neg": 0} for s in seasons_list}
             } for aspect in ASPECTS
         }
         
         neg_sentences = {
             aspect: {
-                2024: {m: [] for m in range(1, 13)},
-                2025: {m: [] for m in range(1, 13)}
+                2024: {s: [] for s in seasons_list},
+                2025: {s: [] for s in seasons_list}
             } for aspect in ASPECTS
         }
         
@@ -332,6 +375,7 @@ def analyze_seasonal_trends(reviews: list[dict]) -> dict:
                 month = dt.month
                 if year not in [2024, 2025]:
                     continue
+                season = get_season_name(month, hotel_name)
             except (ValueError, KeyError):
                 continue
                 
@@ -342,10 +386,10 @@ def analyze_seasonal_trends(reviews: list[dict]) -> dict:
                 sentiment = res["sentiment"]
                 if aspect in ASPECTS and sentiment != 0:
                     if sentiment == 1:
-                        aspect_counts[aspect][year][month]["pos"] += 1
+                        aspect_counts[aspect][year][season]["pos"] += 1
                     elif sentiment == -1:
-                        aspect_counts[aspect][year][month]["neg"] += 1
-                        neg_sentences[aspect][year][month].append(sentence)
+                        aspect_counts[aspect][year][season]["neg"] += 1
+                        neg_sentences[aspect][year][season].append(sentence)
 
         # Calculate monthly scores and deviations for 2024 and 2025
         seasonal_aspect = None
@@ -356,50 +400,50 @@ def analyze_seasonal_trends(reviews: list[dict]) -> dict:
         for aspect in ASPECTS:
             # Compute scores for 2024
             scores_2024 = {}
-            for m in range(1, 13):
-                pos = aspect_counts[aspect][2024][m]["pos"]
-                neg = aspect_counts[aspect][2024][m]["neg"]
+            for s in seasons_list:
+                pos = aspect_counts[aspect][2024][s]["pos"]
+                neg = aspect_counts[aspect][2024][s]["neg"]
                 total = pos + neg
-                scores_2024[m] = (3.0 + 2.0 * ((pos - neg) / total)) if total > 0 else None
+                scores_2024[s] = (3.0 + 2.0 * ((pos - neg) / total)) if total > 0 else None
                 
             # Compute scores for 2025
             scores_2025 = {}
-            for m in range(1, 13):
-                pos = aspect_counts[aspect][2025][m]["pos"]
-                neg = aspect_counts[aspect][2025][m]["neg"]
+            for s in seasons_list:
+                pos = aspect_counts[aspect][2025][s]["pos"]
+                neg = aspect_counts[aspect][2025][s]["neg"]
                 total = pos + neg
-                scores_2025[m] = (3.0 + 2.0 * ((pos - neg) / total)) if total > 0 else None
+                scores_2025[s] = (3.0 + 2.0 * ((pos - neg) / total)) if total > 0 else None
                 
             # Annual means
-            valid_2024 = [s for s in scores_2024.values() if s is not None]
-            valid_2025 = [s for s in scores_2025.values() if s is not None]
+            valid_2024 = [val for val in scores_2024.values() if val is not None]
+            valid_2025 = [val for val in scores_2025.values() if val is not None]
             
-            if len(valid_2024) < 3 or len(valid_2025) < 3:
+            if len(valid_2024) < 2 or len(valid_2025) < 2:
                 continue
                 
             mean_2024 = sum(valid_2024) / len(valid_2024)
             mean_2025 = sum(valid_2025) / len(valid_2025)
             
-            # Calculate deviations and YoY consistent months
+            # Calculate deviations and YoY consistent seasons
             yoy_dips = []
             yoy_peaks = []
             
-            for m in range(1, 13):
-                s24 = scores_2024[m]
-                s25 = scores_2025[m]
+            for s in seasons_list:
+                s24 = scores_2024[s]
+                s25 = scores_2025[s]
                 if s24 is not None and s25 is not None:
                     dev24 = s24 - mean_2024
                     dev25 = s25 - mean_2025
-                    # Threshold of deviation: 0.25 points
-                    if dev24 < -0.25 and dev25 < -0.25:
-                        yoy_dips.append(m)
-                    elif dev24 > 0.25 and dev25 > 0.25:
-                        yoy_peaks.append(m)
+                    # Threshold of seasonal deviation: 0.15 points (since seasons average 3 months, noise is much lower!)
+                    if dev24 < -0.15 and dev25 < -0.15:
+                        yoy_dips.append(s)
+                    elif dev24 > 0.15 and dev25 > 0.15:
+                        yoy_peaks.append(s)
                         
-            # If we have consistent peaks or consistent dips, evaluate seasonality intensity
+            # If we have consistent peaks or dips, evaluate seasonality intensity
             if yoy_dips or yoy_peaks:
-                peak_vals = [scores_2024[m] for m in yoy_peaks] + [scores_2025[m] for m in yoy_peaks]
-                dip_vals = [scores_2024[m] for m in yoy_dips] + [scores_2025[m] for m in yoy_dips]
+                peak_vals = [scores_2024[s] for s in yoy_peaks] + [scores_2025[s] for s in yoy_peaks]
+                dip_vals = [scores_2024[s] for s in yoy_dips] + [scores_2025[s] for s in yoy_dips]
                 
                 avg_peak = sum(peak_vals) / len(peak_vals) if peak_vals else mean_2024
                 avg_dip = sum(dip_vals) / len(dip_vals) if dip_vals else mean_2024
@@ -412,20 +456,15 @@ def analyze_seasonal_trends(reviews: list[dict]) -> dict:
                     best_yoy_peaks = yoy_peaks
                     
         # Formulate explanation based on findings
-        month_names = {
-            1: "January", 2: "February", 3: "March", 4: "April", 5: "May", 6: "June",
-            7: "July", 8: "August", 9: "September", 10: "October", 11: "November", 12: "December"
-        }
-        
-        if seasonal_aspect and max_score_diff > 0.40:
-            peak_names = ", ".join([month_names[m] for m in best_yoy_peaks]) if best_yoy_peaks else "N/A"
-            dip_names = ", ".join([month_names[m] for m in best_yoy_dips]) if best_yoy_dips else "N/A"
+        if seasonal_aspect and max_score_diff > 0.25:
+            peak_names = " and ".join(best_yoy_peaks) if best_yoy_peaks else "N/A"
+            dip_names = " and ".join(best_yoy_dips) if best_yoy_dips else "N/A"
             
-            # Extract negative sentences during dip months across both years
+            # Extract negative sentences during dip seasons
             dip_neg = []
             for year in [2024, 2025]:
-                for m in best_yoy_dips:
-                    dip_neg.extend(neg_sentences[seasonal_aspect][year][m])
+                for s in best_yoy_dips:
+                    dip_neg.extend(neg_sentences[seasonal_aspect][year][s])
                     
             from collections import Counter
             common_neg = [item[0] for item in Counter(dip_neg).most_common(2)]
@@ -433,17 +472,39 @@ def analyze_seasonal_trends(reviews: list[dict]) -> dict:
             neg_evidence = ""
             if common_neg:
                 quotes = " and ".join([f'"{q}"' for q in common_neg])
-                neg_evidence = f" Review feedback in these low-performance months consistently highlights: {quotes}."
+                neg_evidence = f" Review feedback in these low-performance seasons consistently highlights: {quotes}."
                 
             explanation = (
                 f"{seasonal_aspect} ratings for this hotel exhibit consistent seasonal fluctuations, "
                 f"peaking in {peak_names} and dipping in {dip_names} across both 2024 and 2025.{neg_evidence}"
             )
             
+            # Map seasons back to calendar months for backward compatibility
+            season_to_months = {}
+            if city in SOUTHERN_CITIES:
+                season_to_months = {
+                    "Summer": [12, 1, 2], "Autumn": [3, 4, 5], "Winter": [6, 7, 8], "Spring": [9, 10, 11]
+                }
+            elif city in TROPICAL_CITIES:
+                season_to_months = {
+                    "Dry Season": [11, 12, 1, 2, 3, 4], "Wet Season": [5, 6, 7, 8, 9, 10]
+                }
+            else:
+                season_to_months = {
+                    "Summer": [6, 7, 8], "Autumn": [9, 10, 11], "Winter": [12, 1, 2], "Spring": [3, 4, 5]
+                }
+                
+            peak_months = []
+            for s in best_yoy_peaks:
+                peak_months.extend(season_to_months.get(s, []))
+            off_peak_months = []
+            for s in best_yoy_dips:
+                off_peak_months.extend(season_to_months.get(s, []))
+                
             trends[hotel_id] = {
                 "seasonal_aspect": seasonal_aspect,
-                "peak_months": best_yoy_peaks,
-                "off_peak_months": best_yoy_dips,
+                "peak_months": peak_months,
+                "off_peak_months": off_peak_months,
                 "variance": round(max_score_diff, 2),
                 "explanation": explanation
             }
