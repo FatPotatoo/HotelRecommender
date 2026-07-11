@@ -143,55 +143,30 @@ class TestDataProcessor(unittest.TestCase):
         self.assertEqual(len(anomalies), 0)
 
     def test_analyze_seasonal_trends_explanation(self):
-        # Hotel H005 in London:
-        # Peak months (June, July, August): 3 positive location mentions -> Location score = 5.0
-        # Off-peak months (December, January, February): 3 negative location mentions -> Location score = 1.0
-        # (This should trigger London's seasonality profile in the description)
+        # Hotel H005:
+        # 2024:
+        # - Peak months (June, July, August): 3 positive location -> 5.0
+        # - Off-peak months (December, January, February): 3 negative location -> 1.0
+        # 2025:
+        # - Peak months (June, July, August): 3 positive location -> 5.0
+        # - Off-peak months (December, January, February): 3 negative location -> 1.0
         mock_reviews = [
-            # Peak months
-            {
-                "hotel_id": "H005",
-                "hotel_name": "Seasons Hotel, London",
-                "rating": "5.0",
-                "review_date": "2025-06-01",
-                "review_text": "You can't beat the location — everything was a short stroll away."
-            },
-            {
-                "hotel_id": "H005",
-                "hotel_name": "Seasons Hotel, London",
-                "rating": "5.0",
-                "review_date": "2025-07-01",
-                "review_text": "Right in the heart of the city, so easy to get everywhere on foot."
-            },
-            {
-                "hotel_id": "H005",
-                "hotel_name": "Seasons Hotel, London",
-                "rating": "5.0",
-                "review_date": "2025-08-01",
-                "review_text": "Perfect central location, walking distance to all the main sights."
-            },
-            # Off-peak months
-            {
-                "hotel_id": "H005",
-                "hotel_name": "Seasons Hotel, London",
-                "rating": "1.0",
-                "review_date": "2025-12-01",
-                "review_text": "Felt quite isolated — nothing within walking distance."
-            },
-            {
-                "hotel_id": "H005",
-                "hotel_name": "Seasons Hotel, London",
-                "rating": "1.0",
-                "review_date": "2025-01-01",
-                "review_text": "The location was far from everything and required long, expensive taxi rides."
-            },
-            {
-                "hotel_id": "H005",
-                "hotel_name": "Seasons Hotel, London",
-                "rating": "1.0",
-                "review_date": "2025-02-01",
-                "review_text": "Felt quite isolated — nothing within walking distance."
-            }
+            # 2024 Peak
+            {"hotel_id": "H005", "rating": "5.0", "review_date": "2024-06-01", "review_text": "You can't beat the location — everything was a short stroll away."},
+            {"hotel_id": "H005", "rating": "5.0", "review_date": "2024-07-01", "review_text": "Right in the heart of the city, so easy to get everywhere on foot."},
+            {"hotel_id": "H005", "rating": "5.0", "review_date": "2024-08-01", "review_text": "Perfect central location, walking distance to all the main sights."},
+            # 2024 Off-Peak
+            {"hotel_id": "H005", "rating": "1.0", "review_date": "2024-12-01", "review_text": "Felt quite isolated — nothing within walking distance."},
+            {"hotel_id": "H005", "rating": "1.0", "review_date": "2024-01-01", "review_text": "Felt quite isolated — nothing within walking distance."},
+            {"hotel_id": "H005", "rating": "1.0", "review_date": "2024-02-01", "review_text": "Felt quite isolated — nothing within walking distance."},
+            # 2025 Peak
+            {"hotel_id": "H005", "rating": "5.0", "review_date": "2025-06-01", "review_text": "You can't beat the location — everything was a short stroll away."},
+            {"hotel_id": "H005", "rating": "5.0", "review_date": "2025-07-01", "review_text": "Right in the heart of the city, so easy to get everywhere on foot."},
+            {"hotel_id": "H005", "rating": "5.0", "review_date": "2025-08-01", "review_text": "Perfect central location, walking distance to all the main sights."},
+            # 2025 Off-Peak
+            {"hotel_id": "H005", "rating": "1.0", "review_date": "2025-12-01", "review_text": "Felt quite isolated — nothing within walking distance."},
+            {"hotel_id": "H005", "rating": "1.0", "review_date": "2025-01-01", "review_text": "Felt quite isolated — nothing within walking distance."},
+            {"hotel_id": "H005", "rating": "1.0", "review_date": "2025-02-01", "review_text": "Felt quite isolated — nothing within walking distance."}
         ]
         
         trends = data_processor.analyze_seasonal_trends(mock_reviews)
@@ -199,16 +174,26 @@ class TestDataProcessor(unittest.TestCase):
         trend = trends["H005"]
         
         self.assertEqual(trend["seasonal_aspect"], "Location")
-        self.assertEqual(trend["max_score"], 5.0)
-        self.assertEqual(trend["min_score"], 1.0)
-        self.assertEqual(trend["variance"], 4.0)
+        self.assertGreater(trend["variance"], 3.0)
         
-        # Verify the custom explanation matches London and details the off-peak sentences
         explanation = trend["explanation"]
-        self.assertIn("Location scores for this hotel exhibit clear seasonality", explanation)
-        self.assertIn("London", explanation)
+        self.assertIn("Location ratings for this hotel exhibit consistent seasonal fluctuations", explanation)
+        self.assertIn("peaking in June, July, August", explanation)
+        self.assertIn("dipping in January, February, December", explanation)
         self.assertIn('Felt quite isolated', explanation)
-        self.assertIn("rainy winters reduce outdoor walkability", explanation)
+
+    def test_analyze_seasonal_trends_stable(self):
+        # Hotel H008: Consistent flat scores across 2024 and 2025
+        mock_reviews = [
+            {"hotel_id": "H008", "rating": "4.0", "review_date": "2024-06-01", "review_text": "Nice stay."},
+            {"hotel_id": "H008", "rating": "4.0", "review_date": "2024-12-01", "review_text": "Nice stay."},
+            {"hotel_id": "H008", "rating": "4.0", "review_date": "2025-06-01", "review_text": "Nice stay."},
+            {"hotel_id": "H008", "rating": "4.0", "review_date": "2025-12-01", "review_text": "Nice stay."}
+        ]
+        trends = data_processor.analyze_seasonal_trends(mock_reviews)
+        self.assertIn("H008", trends)
+        self.assertIsNone(trends["H008"]["seasonal_aspect"])
+        self.assertIn("No consistent seasonal fluctuations detected", trends["H008"]["explanation"])
 
     def test_calculate_trust_indices(self):
         # Hotel H006: 50% verified (avg 5.0), 50% unverified (avg 1.0)

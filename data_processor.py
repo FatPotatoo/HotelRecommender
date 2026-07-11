@@ -14,40 +14,10 @@ ASPECTS = [
     "Family-Friendliness"
 ]
 
-# Seasonality Profiles for the 20 actual cities in the dataset
-CITY_PROFILES = {
-    "Istanbul": {"zone": "Northern", "desc": "Mediterranean summer peak weather with high tourism demand; winter brings cold, rainy weather that limits walking and outdoor sights."},
-    "Barcelona": {"zone": "Northern", "desc": "Mediterranean climate peaking in summer with beach tourism; winter brings chilly, overcast weather that reduces outdoor activities."},
-    "Lisbon": {"zone": "Northern", "desc": "Sunny coastal summer peaks with beach demand; wet, windy winter weather represents the off-season."},
-    "Tokyo": {"zone": "Northern", "desc": "Spring cherry blossom and autumn foliage peaks; humid summer heatwaves and cold winter winds affect transit and comfort."},
-    "Rome": {"zone": "Northern", "desc": "Peak tourism in spring and summer sightseeing periods; colder, rainy winter conditions represent the off-peak season."},
-    "Sydney": {"zone": "Southern", "desc": "Southern Hemisphere summer beach season peaking in Dec-Feb; cooler winter off-peak months occur in Jun-Aug."},
-    "Bali": {"zone": "Tropical", "desc": "Dry sunny season peaking in May-Sep with diving and beach tourism; heavy tropical monsoons arrive in Nov-Mar."},
-    "New York": {"zone": "Northern", "desc": "High summer tourism and holiday winter season; freezing winter winds limit walkability and outdoor transit."},
-    "Lima": {"zone": "Southern", "desc": "Warm, sunny summer beach season in Dec-Apr; grey, humid, overcast winter conditions (Gua) occur in Jun-Oct."},
-    "Mexico City": {"zone": "Tropical", "desc": "Dry spring season peak; heavy summer afternoon rains (Jun-Sep) disrupt sightseeing and historical walks."},
-    "Bangkok": {"zone": "Tropical", "desc": "Cool, dry winter peak in Nov-Feb; heavy monsoon rains and high humidity occur during May-Oct."},
-    "Amsterdam": {"zone": "Northern", "desc": "Summer canal walks and peak travel; cold, wet, windy winters restrict outdoor exploration."},
-    "Paris": {"zone": "Northern", "desc": "Pleasant spring and summer leisure peaks; chilly, overcast winters limit outdoor dining and sightseeing."},
-    "London": {"zone": "Northern", "desc": "Sunny summer parks and city walks peak; cold, rainy winters reduce outdoor walkability."},
-    "San Francisco": {"zone": "Northern", "desc": "Mild, foggy summers and rainy winters; cool coastal winds affect bay walks and outdoor activities."},
-    "Dubai": {"zone": "Northern", "desc": "Pleasant winter weather in Nov-Mar; blistering summer heatwaves (May-Sep) limit outdoor tours and force indoor activities."},
-    "Seoul": {"zone": "Northern", "desc": "Spring blossom and autumn foliage peaks; freezing sub-zero winter temperatures affect walkability and transit."},
-    "Singapore": {"zone": "Tropical", "desc": "Year-round hot climate; heavier rainfall during the Northeast Monsoon (Nov-Jan) affects transit and outdoor sights."},
-    "Cape Town": {"zone": "Southern", "desc": "Stunning Southern Hemisphere summer beaches; cold, wet, windy winters (Jun-Aug) limit coastal access."},
-    "Mumbai": {"zone": "Tropical", "desc": "Dry winter season (Nov-Feb) peak; severe monsoon rains (Jun-Sep) disrupt transport and outdoor activities."}
-}
-
 def load_data(reviews_path: str) -> list[dict]:
     """Load reviews from JSON file."""
     with open(reviews_path, "r", encoding="utf-8") as f:
         return json.load(f)
-
-def get_hotel_city(hotel_name: str) -> str:
-    """Parse city name from hotel name field."""
-    if ", " in hotel_name:
-        return hotel_name.split(", ")[-1].strip()
-    return "Unknown"
 
 def segment_sentences(review_text: str) -> list[str]:
     """Split review text into individual sentences using punctuation boundaries."""
@@ -119,13 +89,21 @@ def compile_aspect_scorecard(reviews: list[dict]) -> dict:
 
 def compile_temporal_rating_stream(reviews: list[dict]) -> dict:
     """
-    Compiles monthly average overall ratings for each hotel over the 24-month timeline.
+    Compiles monthly average scores for overall rating and each of the 7 aspects
+    for each hotel over the 24-month timeline.
     
     Returns:
-        dict: { hotel_id: { "YYYY-MM": average_rating } }
+        dict: { 
+            hotel_id: { 
+                "Overall": { "YYYY-MM": average_rating },
+                "Cleanliness": { "YYYY-MM": score },
+                ...
+            } 
+        }
     """
-    # Group ratings by hotel and month
-    # Structure: { hotel_id: { "YYYY-MM": [ratings] } }
+    if not reviews:
+        return {}
+        
     streams_agg = {}
     
     for r in reviews:
@@ -138,18 +116,53 @@ def compile_temporal_rating_stream(reviews: list[dict]) -> dict:
             continue
             
         if hotel_id not in streams_agg:
-            streams_agg[hotel_id] = {}
-        if month_key not in streams_agg[hotel_id]:
-            streams_agg[hotel_id][month_key] = []
-        streams_agg[hotel_id][month_key].append(rating)
-        
-    # Calculate averages
-    streams = {}
-    for hotel_id, monthly_data in streams_agg.items():
-        streams[hotel_id] = {}
-        for month_key, ratings in monthly_data.items():
-            streams[hotel_id][month_key] = round(sum(ratings) / len(ratings), 2)
+            streams_agg[hotel_id] = {
+                "Overall": {},
+                **{aspect: {} for aspect in ASPECTS}
+            }
             
+        # Overall
+        if month_key not in streams_agg[hotel_id]["Overall"]:
+            streams_agg[hotel_id]["Overall"][month_key] = []
+        streams_agg[hotel_id]["Overall"][month_key].append(rating)
+        
+        # Aspects
+        sentences = segment_sentences(r["review_text"])
+        for sentence in sentences:
+            res = sentiment_engine.extract_sentence_aspect_sentiment(sentence)
+            aspect = res["aspect"]
+            sentiment = res["sentiment"]
+            if aspect in ASPECTS and sentiment != 0:
+                if month_key not in streams_agg[hotel_id][aspect]:
+                    streams_agg[hotel_id][aspect][month_key] = {"pos": 0, "neg": 0}
+                if sentiment == 1:
+                    streams_agg[hotel_id][aspect][month_key]["pos"] += 1
+                elif sentiment == -1:
+                    streams_agg[hotel_id][aspect][month_key]["neg"] += 1
+
+    streams = {}
+    for hotel_id, aspect_data in streams_agg.items():
+        streams[hotel_id] = {
+            "Overall": {},
+            **{aspect: {} for aspect in ASPECTS}
+        }
+        # Compile Overall average rating
+        for month_key, ratings in aspect_data["Overall"].items():
+            streams[hotel_id]["Overall"][month_key] = round(sum(ratings) / len(ratings), 2)
+            
+        # Compile Aspect scores
+        for aspect in ASPECTS:
+            for month_key in aspect_data["Overall"]:
+                data = aspect_data[aspect].get(month_key, {"pos": 0, "neg": 0})
+                pos = data["pos"]
+                neg = data["neg"]
+                total = pos + neg
+                if total > 0:
+                    score = 3.0 + 2.0 * ((pos - neg) / total)
+                    streams[hotel_id][aspect][month_key] = round(max(1.0, min(5.0, score)), 2)
+                else:
+                    streams[hotel_id][aspect][month_key] = streams[hotel_id]["Overall"].get(month_key, 3.0)
+                    
     return streams
 
 def detect_quality_anomalies(reviews: list[dict], threshold: float = -0.20) -> list[dict]:
@@ -276,13 +289,17 @@ def detect_quality_anomalies(reviews: list[dict], threshold: float = -0.20) -> l
 
 def analyze_seasonal_trends(reviews: list[dict]) -> dict:
     """
-    Groups reviews by hotel, calculates monthly aspect averages, and evaluates
-    if seasonality exists for the hotel. Generates a natural language explanation
-    pinpointing the aspect, peak/off-peak months, evidence quotes, and geographical context.
+    Detects consistent, Year-Over-Year seasonality patterns for each hotel.
+    Removes dependency on hardcoded city templates, relying strictly on consistency of 
+    monthly aspect deviations from the annual mean in both 2024 and 2025.
     
     Returns:
         dict: { hotel_id: { "seasonal_aspect": str, "explanation": str, ... } }
     """
+    if not reviews:
+        return {}
+        
+    # Group reviews by hotel
     hotel_reviews = {}
     for r in reviews:
         hotel_id = r["hotel_id"]
@@ -293,19 +310,28 @@ def analyze_seasonal_trends(reviews: list[dict]) -> dict:
     trends = {}
     
     for hotel_id, r_list in hotel_reviews.items():
-        hotel_name = r_list[0].get("hotel_name", "Unknown Hotel")
-        city = get_hotel_city(hotel_name)
-        profile = CITY_PROFILES.get(city, {"zone": "Unknown", "desc": "General local weather conditions apply."})
+        # Structure: { aspect: { year: { month: { "pos": 0, "neg": 0 } } } }
+        aspect_counts = {
+            aspect: {
+                2024: {m: {"pos": 0, "neg": 0} for m in range(1, 13)},
+                2025: {m: {"pos": 0, "neg": 0} for m in range(1, 13)}
+            } for aspect in ASPECTS
+        }
         
-        # Aggregate aspect counts by calendar month (1 to 12)
-        # Structure: { aspect: { month: { "pos": 0, "neg": 0 } } }
-        aspect_monthly = {aspect: {m: {"pos": 0, "neg": 0} for m in range(1, 13)} for aspect in ASPECTS}
-        neg_sentences = {aspect: {m: [] for m in range(1, 13)} for aspect in ASPECTS}
+        neg_sentences = {
+            aspect: {
+                2024: {m: [] for m in range(1, 13)},
+                2025: {m: [] for m in range(1, 13)}
+            } for aspect in ASPECTS
+        }
         
         for r in r_list:
             try:
                 dt = datetime.strptime(r["review_date"], "%Y-%m-%d")
+                year = dt.year
                 month = dt.month
+                if year not in [2024, 2025]:
+                    continue
             except (ValueError, KeyError):
                 continue
                 
@@ -316,87 +342,115 @@ def analyze_seasonal_trends(reviews: list[dict]) -> dict:
                 sentiment = res["sentiment"]
                 if aspect in ASPECTS and sentiment != 0:
                     if sentiment == 1:
-                        aspect_monthly[aspect][month]["pos"] += 1
+                        aspect_counts[aspect][year][month]["pos"] += 1
                     elif sentiment == -1:
-                        aspect_monthly[aspect][month]["neg"] += 1
-                        neg_sentences[aspect][month].append(sentence)
+                        aspect_counts[aspect][year][month]["neg"] += 1
+                        neg_sentences[aspect][year][month].append(sentence)
 
-        # Calculate scores and find the aspect with the maximum variance
+        # Calculate monthly scores and deviations for 2024 and 2025
         seasonal_aspect = None
-        max_variance = -1.0
-        aspect_scores = {}
+        best_yoy_dips = []
+        best_yoy_peaks = []
+        max_score_diff = -1.0
         
         for aspect in ASPECTS:
-            aspect_scores[aspect] = {}
-            scores_list = []
-            for month in range(1, 13):
-                pos = aspect_monthly[aspect][month]["pos"]
-                neg = aspect_monthly[aspect][month]["neg"]
+            # Compute scores for 2024
+            scores_2024 = {}
+            for m in range(1, 13):
+                pos = aspect_counts[aspect][2024][m]["pos"]
+                neg = aspect_counts[aspect][2024][m]["neg"]
                 total = pos + neg
-                if total > 0:
-                    score = 3.0 + 2.0 * ((pos - neg) / total)
-                    aspect_scores[aspect][month] = round(score, 2)
-                    scores_list.append(score)
-                else:
-                    aspect_scores[aspect][month] = None
-                    
-            valid_scores = [s for s in scores_list if s is not None]
-            if len(valid_scores) >= 4:  # Require at least 4 months of data to compute variance
-                variance = max(valid_scores) - min(valid_scores)
-                if variance > max_variance:
-                    max_variance = variance
-                    seasonal_aspect = aspect
-                    
-        # Check if seasonality is significant (variance threshold = 0.40)
-        if seasonal_aspect and max_variance > 0.40:
-            valid_scores = [aspect_scores[seasonal_aspect][m] for m in range(1, 13) if aspect_scores[seasonal_aspect][m] is not None]
-            valid_months_scores = [(m, aspect_scores[seasonal_aspect][m]) for m in range(1, 13) if aspect_scores[seasonal_aspect][m] is not None]
-            valid_months_scores.sort(key=lambda x: x[1])
-            
-            # Identify top 3 and bottom 3 months
-            off_peak_months = [m for m, s in valid_months_scores[:3]]
-            peak_months = [m for m, s in valid_months_scores[-3:]]
-            
-            # Find the most common complaints (negative sentences) in off-peak months
-            off_peak_neg = []
-            for m in off_peak_months:
-                off_peak_neg.extend(neg_sentences[seasonal_aspect][m])
+                scores_2024[m] = (3.0 + 2.0 * ((pos - neg) / total)) if total > 0 else None
                 
+            # Compute scores for 2025
+            scores_2025 = {}
+            for m in range(1, 13):
+                pos = aspect_counts[aspect][2025][m]["pos"]
+                neg = aspect_counts[aspect][2025][m]["neg"]
+                total = pos + neg
+                scores_2025[m] = (3.0 + 2.0 * ((pos - neg) / total)) if total > 0 else None
+                
+            # Annual means
+            valid_2024 = [s for s in scores_2024.values() if s is not None]
+            valid_2025 = [s for s in scores_2025.values() if s is not None]
+            
+            if len(valid_2024) < 3 or len(valid_2025) < 3:
+                continue
+                
+            mean_2024 = sum(valid_2024) / len(valid_2024)
+            mean_2025 = sum(valid_2025) / len(valid_2025)
+            
+            # Calculate deviations and YoY consistent months
+            yoy_dips = []
+            yoy_peaks = []
+            
+            for m in range(1, 13):
+                s24 = scores_2024[m]
+                s25 = scores_2025[m]
+                if s24 is not None and s25 is not None:
+                    dev24 = s24 - mean_2024
+                    dev25 = s25 - mean_2025
+                    # Threshold of deviation: 0.25 points
+                    if dev24 < -0.25 and dev25 < -0.25:
+                        yoy_dips.append(m)
+                    elif dev24 > 0.25 and dev25 > 0.25:
+                        yoy_peaks.append(m)
+                        
+            # If we have consistent peaks or consistent dips, evaluate seasonality intensity
+            if yoy_dips or yoy_peaks:
+                peak_vals = [scores_2024[m] for m in yoy_peaks] + [scores_2025[m] for m in yoy_peaks]
+                dip_vals = [scores_2024[m] for m in yoy_dips] + [scores_2025[m] for m in yoy_dips]
+                
+                avg_peak = sum(peak_vals) / len(peak_vals) if peak_vals else mean_2024
+                avg_dip = sum(dip_vals) / len(dip_vals) if dip_vals else mean_2024
+                
+                diff = avg_peak - avg_dip
+                if diff > max_score_diff:
+                    max_score_diff = diff
+                    seasonal_aspect = aspect
+                    best_yoy_dips = yoy_dips
+                    best_yoy_peaks = yoy_peaks
+                    
+        # Formulate explanation based on findings
+        month_names = {
+            1: "January", 2: "February", 3: "March", 4: "April", 5: "May", 6: "June",
+            7: "July", 8: "August", 9: "September", 10: "October", 11: "November", 12: "December"
+        }
+        
+        if seasonal_aspect and max_score_diff > 0.40:
+            peak_names = ", ".join([month_names[m] for m in best_yoy_peaks]) if best_yoy_peaks else "N/A"
+            dip_names = ", ".join([month_names[m] for m in best_yoy_dips]) if best_yoy_dips else "N/A"
+            
+            # Extract negative sentences during dip months across both years
+            dip_neg = []
+            for year in [2024, 2025]:
+                for m in best_yoy_dips:
+                    dip_neg.extend(neg_sentences[seasonal_aspect][year][m])
+                    
             from collections import Counter
-            common_neg = [item[0] for item in Counter(off_peak_neg).most_common(2)]
-            
-            month_names = {
-                1: "January", 2: "February", 3: "March", 4: "April", 5: "May", 6: "June",
-                7: "July", 8: "August", 9: "September", 10: "October", 11: "November", 12: "December"
-            }
-            
-            peak_names = ", ".join([month_names[m] for m in peak_months])
-            off_peak_names = ", ".join([month_names[m] for m in off_peak_months])
+            common_neg = [item[0] for item in Counter(dip_neg).most_common(2)]
             
             neg_evidence = ""
             if common_neg:
                 quotes = " and ".join([f'"{q}"' for q in common_neg])
-                neg_evidence = f" Review feedback in low months highlights issues such as: {quotes}."
+                neg_evidence = f" Review feedback in these low-performance months consistently highlights: {quotes}."
                 
             explanation = (
-                f"{seasonal_aspect} scores for this hotel exhibit clear seasonality, peaking in {peak_names} "
-                f"and dipping in {off_peak_names}.{neg_evidence} This pattern aligns with "
-                f"{city}'s seasonality: {profile['desc']}"
+                f"{seasonal_aspect} ratings for this hotel exhibit consistent seasonal fluctuations, "
+                f"peaking in {peak_names} and dipping in {dip_names} across both 2024 and 2025.{neg_evidence}"
             )
             
             trends[hotel_id] = {
                 "seasonal_aspect": seasonal_aspect,
-                "peak_months": peak_months,
-                "off_peak_months": off_peak_months,
-                "max_score": round(max(valid_scores), 2),
-                "min_score": round(min(valid_scores), 2),
-                "variance": round(max_variance, 2),
+                "peak_months": best_yoy_peaks,
+                "off_peak_months": best_yoy_dips,
+                "variance": round(max_score_diff, 2),
                 "explanation": explanation
             }
         else:
             trends[hotel_id] = {
                 "seasonal_aspect": None,
-                "explanation": f"No strong seasonal fluctuations detected. Ratings for this hotel remain stable throughout the year, matching {city}'s general climate profile."
+                "explanation": "No consistent seasonal fluctuations detected. This hotel maintains high operational stability year-round, with aspect ratings remaining stable across both 2024 and 2025."
             }
             
     return trends

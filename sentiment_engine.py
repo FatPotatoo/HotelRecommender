@@ -187,18 +187,26 @@ def rule_based_fallback(text: str) -> dict:
         
     return {"aspect": assigned_aspect, "sentiment": sentiment}
 
+def normalize_text(text: str) -> str:
+    """Removes all non-alphanumeric characters and converts to lowercase for robust exact matching."""
+    return re.sub(r'[^a-zA-Z0-9]', '', text).lower()
+
+# Precompute normalized template map
+NORMALIZED_TEMPLATE_MAP = {normalize_text(k): v for k, v in TEMPLATE_MAP.items() if k}
+
 def extract_sentence_aspect_sentiment(text: str) -> dict:
     """
     Dual-Path Hybrid Aspect-Sentiment Extraction logic:
-    1. Fast Path: Exact match lookup in TEMPLATE_MAP (milliseconds).
+    1. Fast Path: Normalized exact match lookup (milliseconds).
     2. General Path: SentenceTransformer embedding + cosine similarity match (> 0.80).
     3. Fallback Path: Zero-shot classification using valhalla/distilbart-mnli-12-3.
     """
     cleaned_text = text.strip()
     
-    # 1. Fast Path (Exact Matches)
-    if cleaned_text in TEMPLATE_MAP:
-        return TEMPLATE_MAP[cleaned_text]
+    # 1. Fast Path (Normalized Exact Matches)
+    norm_text = normalize_text(cleaned_text)
+    if norm_text in NORMALIZED_TEMPLATE_MAP:
+        return NORMALIZED_TEMPLATE_MAP[norm_text]
         
     # 2. General Path (Cosine Similarity Match)
     try:

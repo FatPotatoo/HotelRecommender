@@ -268,16 +268,21 @@ class Recommender:
             # A. Structured Filter: keep reviews that contain positive mentions of core aspects
             candidate_reviews = []
             for r in hotel_reviews:
-                has_pos_match = False
+                match_count = 0
                 sentences = data_processor.segment_sentences(r["review_text"])
                 for sentence in sentences:
                     res = sentiment_engine.extract_sentence_aspect_sentiment(sentence)
                     if res["aspect"] in core_aspects and res["sentiment"] == 1:
-                        has_pos_match = True
-                        break
-                if has_pos_match:
-                    candidate_reviews.append(r)
+                        match_count += 1
+                if match_count > 0:
+                    candidate_reviews.append((r, match_count))
                     
+            # Sort candidates by match intensity and review rating first
+            candidate_reviews.sort(key=lambda x: (x[1], float(x[0]["rating"])), reverse=True)
+            
+            # Slice to only the top 15 candidates for vector search
+            candidate_reviews = [r for r, count in candidate_reviews[:15]]
+            
             # Fallback if no reviews matched the positive aspect filter
             if not candidate_reviews:
                 candidate_reviews = hotel_reviews

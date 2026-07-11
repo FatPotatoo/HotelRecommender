@@ -84,7 +84,7 @@ st.markdown("""
         margin-bottom: 4px;
     }
 </style>
-""", unsafe_style_allowed=True)
+""", unsafe_allow_html=True)
 
 
 def check_api_status():
@@ -97,7 +97,6 @@ def check_api_status():
 
 
 # Main Sidebar
-st.sidebar.image("https://www.expediagroup.com/content/dam/eg/eg-logos/expedia-group-logo.png", width=180)
 st.sidebar.title("Hotel Review Sentinel")
 st.sidebar.markdown("*AI-Powered Hotel Intelligence Engine*")
 st.sidebar.divider()
@@ -202,7 +201,7 @@ if page == "🔍 Personalized Recommender":
                         </div>
                     </div>
                 </div>
-                """, unsafe_style_allowed=True)
+                """, unsafe_allow_html=True)
                 
                 # Render Accessibility Hard Filter Warning if Penalty applied
                 if hotel.get("applied_penalty", 0.0) > 0:
@@ -231,7 +230,7 @@ elif page == "📈 Operations & Trust Monitor":
         
         with tab1:
             st.subheader("Drift-Isolated Quality Anomalies (Last 60 Days)")
-            st.markdown("These alerts highlight hotels whose cleanliness or service ratings dropped by $>20\%$ in the last 60 days, excluding drops that occurred in the previous year (treating them as seasonal drift).")
+            st.markdown("These alerts highlight hotels whose cleanliness or service ratings dropped by >20% in the last 60 days, excluding drops that occurred in the previous year (treating them as seasonal drift).")
             
             with st.spinner("Fetching anomalies..."):
                 anomalies = requests.get(f"{API_URL}/anomalies").json()
@@ -246,7 +245,7 @@ elif page == "📈 Operations & Trust Monitor":
                             Historic Average Aspect Score: {a['historic_score']:.2f} | Recent 60 Days Aspect Score: {a['recent_score']:.2f}
                         </div>
                     </div>
-                    """, unsafe_style_allowed=True)
+                    """, unsafe_allow_html=True)
             else:
                 st.success("✅ No recent operational quality anomalies detected. All recent dips are classified as seasonal drifts.")
                 
@@ -287,24 +286,35 @@ elif page == "🌦️ Seasonality Explorer":
             trend = response["trend"]
             ratings_stream = response["ratings_stream"]
             
-            # Line Chart of temporal ratings stream
-            st.subheader("Monthly Customer Ratings Stream (2024 - 2025)")
-            if ratings_stream:
-                df_stream = pd.DataFrame(list(ratings_stream.items()), columns=["Month", "Avg Rating"])
+            # Line Chart of temporal ratings stream (always overall rating at the top)
+            st.subheader("Monthly Customer Ratings Stream (Overall)")
+            if ratings_stream and "Overall" in ratings_stream:
+                overall_data = ratings_stream["Overall"]
+                df_stream = pd.DataFrame(list(overall_data.items()), columns=["Month", "Overall Rating"])
                 df_stream = df_stream.sort_values(by="Month").reset_index(drop=True)
-                st.line_chart(df_stream.set_index("Month"), height=300)
+                st.line_chart(df_stream.set_index("Month"), height=250)
             else:
                 st.write("No temporal ratings timeline data available for this hotel.")
                 
             # Seasonality Explanation Narrative
-            st.subheader("Climate & Tourism Seasonality Analysis")
+            st.subheader("Operational Seasonality Analysis")
             if trend.get("seasonal_aspect"):
-                st.info(f"🎯 **Identified Seasonal Aspect:** `{trend['seasonal_aspect']}` (Variance: {trend['variance']:.2f})")
+                st.info(f"🎯 **Identified Seasonal Aspect:** `{trend['seasonal_aspect']}`")
+                
+                # Show the specific aspect plot alongside the narrative
+                seasonal_aspect = trend["seasonal_aspect"]
+                if ratings_stream and seasonal_aspect in ratings_stream:
+                    st.markdown(f"**Monthly ratings stream for seasonal aspect: {seasonal_aspect}**")
+                    aspect_data = ratings_stream[seasonal_aspect]
+                    df_aspect = pd.DataFrame(list(aspect_data.items()), columns=["Month", f"{seasonal_aspect} Rating"])
+                    df_aspect = df_aspect.sort_values(by="Month").reset_index(drop=True)
+                    st.line_chart(df_aspect.set_index("Month"), height=250)
+                
                 st.markdown(f"""
                 <div style="background-color: #1E293B; border-left: 4px solid #3B82F6; padding: 18px; border-radius: 4px; font-size: 15px; line-height: 1.6;">
                     {trend['explanation']}
                 </div>
-                """, unsafe_style_allowed=True)
+                """, unsafe_allow_html=True)
             else:
                 st.write(trend["explanation"])
                 
