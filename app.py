@@ -14,6 +14,10 @@ st.set_page_config(
 # API Endpoint URL
 API_URL = "http://127.0.0.1:8000/api"
 
+# Initialize session state for lazy-loaded anomaly charts
+if "loaded_charts" not in st.session_state:
+    st.session_state.loaded_charts = set()
+
 # Custom Premium Styling
 st.markdown("""
 <style>
@@ -392,21 +396,32 @@ elif page == "📈 Operations Monitor":
                 with st.expander(f"🚨 Operations Alert: {a['hotel_name']} ({a['hotel_id']}) — Aspect: {a['aspect']} Drop: {a['drop_percentage']}%"):
                     st.write(f"**Historic Average Aspect Score:** {a['historic_score']:.2f} | **Recent 60 Days Aspect Score:** {a['recent_score']:.2f}")
                     
-                    # Fetch monthly rating stream of this hotel
-                    try:
-                        hist_res = requests.get(f"{API_URL}/seasonality/{a['hotel_id']}").json()
-                        ratings_stream = hist_res.get("ratings_stream")
-                        aspect = a['aspect']
-                        if ratings_stream and aspect in ratings_stream:
-                            st.markdown(f"**Monthly rating stream for {aspect}:**")
-                            aspect_data = ratings_stream[aspect]
-                            df_aspect = pd.DataFrame(list(aspect_data.items()), columns=["Month", f"{aspect} Rating"])
-                            df_aspect = df_aspect.sort_values(by="Month").reset_index(drop=True)
-                            st.line_chart(df_aspect.set_index("Month"), height=220)
-                        else:
-                            st.info("No rating stream timeline data available for this aspect.")
-                    except Exception as e:
-                        st.error(f"Could not load rating stream timeline chart: {e}")
+                    chart_key = f"chart_{a['hotel_id']}_{a['aspect']}_{idx}"
+                    
+                    show_chart = False
+                    if chart_key in st.session_state.loaded_charts:
+                        show_chart = True
+                    else:
+                        if st.button("📊 Load Ratings Timeline Chart", key=f"btn_{chart_key}"):
+                            st.session_state.loaded_charts.add(chart_key)
+                            show_chart = True
+                    
+                    if show_chart:
+                        # Fetch monthly rating stream of this hotel
+                        try:
+                            hist_res = requests.get(f"{API_URL}/seasonality/{a['hotel_id']}").json()
+                            ratings_stream = hist_res.get("ratings_stream")
+                            aspect = a['aspect']
+                            if ratings_stream and aspect in ratings_stream:
+                                st.markdown(f"**Monthly rating stream for {aspect}:**")
+                                aspect_data = ratings_stream[aspect]
+                                df_aspect = pd.DataFrame(list(aspect_data.items()), columns=["Month", f"{aspect} Rating"])
+                                df_aspect = df_aspect.sort_values(by="Month").reset_index(drop=True)
+                                st.line_chart(df_aspect.set_index("Month"), height=220)
+                            else:
+                                st.info("No rating stream timeline data available for this aspect.")
+                        except Exception as e:
+                            st.error(f"Could not load rating stream timeline chart: {e}")
         else:
             st.success("✅ No recent operational quality anomalies detected. All recent dips are classified as seasonal drifts.")
     else:
