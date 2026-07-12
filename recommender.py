@@ -67,20 +67,23 @@ def get_archetype_embeddings():
         _archetype_embeddings = model.encode(descs, convert_to_tensor=True)
     return _archetype_embeddings
 
-def extract_traveler_cohort(desc: str) -> str:
-    """Extracts target traveler type cohort from traveler description."""
+def extract_traveler_cohorts(desc: str) -> set[str]:
+    """Extracts target traveler type cohorts from traveler description."""
     desc_lower = desc.lower()
-    if any(w in desc_lower for w in ["solo", "single", "alone", "myself", "independent"]):
-        return "solo"
+    
     if any(w in desc_lower for w in ["family", "kid", "child", "toddler", "parent", "son", "daughter"]):
-        return "family"
-    if any(w in desc_lower for w in ["couple", "romantic", "honeymoon", "partner", "wife", "husband", "getaway"]):
-        return "couple"
+        return {"family"}
     if any(w in desc_lower for w in ["business", "corporate", "conference", "work", "meeting", "freelancer", "road-warrior"]):
-        return "business"
+        return {"business"}
+        
+    cohorts = {"leisure"}
+    if any(w in desc_lower for w in ["solo", "single", "alone", "myself", "independent"]):
+        cohorts.add("solo")
+    if any(w in desc_lower for w in ["couple", "romantic", "honeymoon", "partner", "wife", "husband", "getaway"]):
+        cohorts.add("couple")
     if any(w in desc_lower for w in ["group", "friends", "bachelor", "colleagues"]):
-        return "group"
-    return "leisure"
+        cohorts.add("group")
+    return cohorts
 
 def infer_review_traveler_type(review: dict) -> str:
     """Gets traveler type from review dict, or infers it from review text if missing."""
@@ -304,7 +307,7 @@ class Recommender:
         # 4. Fetch Evidence Citations using Structured RAG
         # Identify core aspects the user cares about (weight > 0.15)
         core_aspects = [aspect for aspect, w in weights.items() if w > 0.15]
-        target_cohort = extract_traveler_cohort(desc)
+        target_cohorts = extract_traveler_cohorts(desc)
         
         # Precompute query embedding for vector similarity ranking
         try:
@@ -318,7 +321,7 @@ class Recommender:
         for rec in recommended:
             hotel_id = rec["hotel_id"]
             hotel_reviews = [r for r in self.reviews if r["hotel_id"] == hotel_id]
-            cohort_reviews = [r for r in hotel_reviews if infer_review_traveler_type(r) == target_cohort]
+            cohort_reviews = [r for r in hotel_reviews if infer_review_traveler_type(r) in target_cohorts]
             
             # Prioritize the cohort pool if there are enough reviews, otherwise default to all
             reviews_pool = cohort_reviews if len(cohort_reviews) >= 3 else hotel_reviews
