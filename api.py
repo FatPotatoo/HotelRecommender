@@ -14,10 +14,12 @@ PROFILES_PATH = "user_profiles.json"
 
 # Global Recommender cache
 rec_engine = None
+global_trends = None
+global_streams = None
 
 @app.on_event("startup")
 def startup_event():
-    global rec_engine
+    global rec_engine, global_trends, global_streams
     try:
         print("Initializing Recommender Engine...")
         rec_engine = recommender.Recommender(REVIEWS_PATH, PROFILES_PATH)
@@ -28,6 +30,10 @@ def startup_event():
         sentiment_engine.get_sentence_transformer()
         sentiment_engine.get_zero_shot_classifier()
         recommender.get_archetype_embeddings()
+        
+        print("Pre-computing seasonality trends and temporal streams...")
+        global_trends = data_processor.analyze_seasonal_trends(rec_engine.reviews)
+        global_streams = data_processor.compile_temporal_rating_stream(rec_engine.reviews)
         
         print("Recommender initialized successfully!")
     except Exception as e:
@@ -81,21 +87,24 @@ def get_anomalies():
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/api/trends")
+def get_all_trends():
+    if global_trends is None:
+        raise HTTPException(status_code=500, detail="Seasonality trends not loaded")
+    return global_trends
+
 @app.get("/api/seasonality/{hotel_id}")
 def get_hotel_seasonality(hotel_id: str):
-    if rec_engine is None:
+    if rec_engine is None or global_trends is None or global_streams is None:
         raise HTTPException(status_code=500, detail="Recommender engine not loaded")
     if hotel_id not in rec_engine.hotel_meta:
         raise HTTPException(status_code=404, detail="Hotel not found")
     try:
-        trends = data_processor.analyze_seasonal_trends(rec_engine.reviews)
-        hotel_trend = trends.get(hotel_id, {
+        hotel_trend = global_trends.get(hotel_id, {
             "seasonal_aspect": None,
             "explanation": "No seasonal trends found."
         })
-        
-        streams = data_processor.compile_temporal_rating_stream(rec_engine.reviews)
-        hotel_stream = streams.get(hotel_id, {})
+        hotel_stream = global_streams.get(hotel_id, {})
         
         return {
             "hotel_id": hotel_id,

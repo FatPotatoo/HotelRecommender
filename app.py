@@ -433,12 +433,33 @@ elif page == "🌦️ Seasonality Explorer":
     st.markdown("Select a hotel to analyze its 24-month monthly ratings stream and view its climate seasonality narrative.")
     
     if api_active:
-        # Load hotel options
+        # Load hotel options and pre-computed trends
         hotels = requests.get(f"{API_URL}/hotels").json()
         hotel_map = {h["hotel_id"]: h["hotel_name"] for h in hotels}
+        all_trends = requests.get(f"{API_URL}/trends").json()
         
-        selected_hotel_id = st.selectbox("Select Hotel", list(hotel_map.keys()), 
-                                         format_func=lambda x: f"{hotel_map[x]} ({x})")
+        hotel_ids = list(hotel_map.keys())
+        
+        # Find first hotel with seasonality to default to
+        default_index = 0
+        for i, hid in enumerate(hotel_ids):
+            t = all_trends.get(hid, {})
+            if t.get("seasonal_aspect"):
+                default_index = i
+                break
+                
+        def get_hotel_label(hid):
+            name = hotel_map.get(hid, "Unknown Hotel")
+            t = all_trends.get(hid, {})
+            aspect = t.get("seasonal_aspect")
+            if aspect:
+                return f"{name} ({hid}) 🌦️ [Seasonal: {aspect}]"
+            else:
+                return f"{name} ({hid}) 🟢 [Stable]"
+                
+        selected_hotel_id = st.selectbox("Select Hotel", hotel_ids, 
+                                         index=default_index,
+                                         format_func=get_hotel_label)
         
         if selected_hotel_id:
             with st.spinner("Generating seasonality profiles..."):
