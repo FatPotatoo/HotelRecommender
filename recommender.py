@@ -85,26 +85,7 @@ def extract_traveler_cohorts(desc: str) -> set[str]:
         cohorts.add("group")
     return cohorts
 
-def infer_review_traveler_type(review: dict) -> str:
-    """Gets traveler type from review dict, or infers it from review text if missing."""
-    t_type = review.get("traveler_type")
-    if t_type:
-        return t_type.lower()
-        
-    text_lower = review.get("review_text", "").lower()
-    
-    if any(w in text_lower for w in ["kids", "children", "toddler", "family", "our son", "our daughter", "connecting room"]):
-        return "family"
-    if any(w in text_lower for w in ["husband", "wife", "partner", "couple", "romantic", "anniversary", "getaway", "honeymoon"]):
-        return "couple"
-    if any(w in text_lower for w in ["business", "conference", "work", "meeting", "meeting room", "facilities for work", "office district"]):
-        return "business"
-    if any(w in text_lower for w in ["friends", "group", "splitting", "buddies", "colleagues"]):
-        return "group"
-    if any(w in text_lower for w in ["solo", "alone", "myself", "independent", "single"]):
-        return "solo"
-        
-    return "leisure"
+
 
 def get_user_profiles(profiles_path: str) -> dict:
     """Load and parse traveler profiles from JSON file."""
@@ -321,21 +302,22 @@ class Recommender:
         for rec in recommended:
             hotel_id = rec["hotel_id"]
             hotel_reviews = [r for r in self.reviews if r["hotel_id"] == hotel_id]
-            cohort_reviews = [r for r in hotel_reviews if infer_review_traveler_type(r) in target_cohorts]
             
-            # Prioritize the cohort pool if there are enough reviews, otherwise default to all
-            reviews_pool = cohort_reviews if len(cohort_reviews) >= 3 else hotel_reviews
-            
-            # A. Structured Filter: keep reviews that contain positive mentions of core aspects
+            # A. Structured Filter: keep reviews that contain positive core aspects and NO negative mentions of any aspect
             candidate_reviews = []
-            for r in reviews_pool:
+            for r in hotel_reviews:
+                is_valid = True
                 match_count = 0
                 sentences = data_processor.segment_sentences(r["review_text"])
                 for sentence in sentences:
                     res = sentiment_engine.extract_sentence_aspect_sentiment(sentence)
+                    if res["sentiment"] == -1:
+                        is_valid = False
+                        break
                     if res["aspect"] in core_aspects and res["sentiment"] == 1:
                         match_count += 1
-                if match_count > 0:
+                        
+                if is_valid and match_count > 0:
                     candidate_reviews.append((r, match_count))
                     
             # Sort candidates by match intensity and review rating first
@@ -370,13 +352,24 @@ class Recommender:
                         # Normalize rating to [0, 1] range
                         rating_val = (float(r["rating"]) - 1.0) / 4.0
                         blended_score = 0.70 * sim_score + 0.30 * rating_val
-                        scored_candidates.append((r, blended_score))
+                        
+                        # Apply rank boost if the reviewer traveler type matches user's target cohorts
+                        r_type = r.get("traveler_type", "").lower()
+                        cohort_boost = 0.15 if r_type in target_cohorts else 0.0
+                        
+                        scored_candidates.append((r, blended_score + cohort_boost))
                 except Exception:
                     for r in candidate_reviews:
-                        scored_candidates.append((r, float(r["rating"])))
+                        rating_val = float(r["rating"])
+                        r_type = r.get("traveler_type", "").lower()
+                        cohort_boost = 0.60 if r_type in target_cohorts else 0.0
+                        scored_candidates.append((r, rating_val + cohort_boost))
             else:
                 for r in candidate_reviews:
-                    scored_candidates.append((r, float(r["rating"])))
+                    rating_val = float(r["rating"])
+                    r_type = r.get("traveler_type", "").lower()
+                    cohort_boost = 0.60 if r_type in target_cohorts else 0.0
+                    scored_candidates.append((r, rating_val + cohort_boost))
                     
             scored_candidates.sort(key=lambda x: x[1], reverse=True)
             
