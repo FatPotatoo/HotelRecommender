@@ -7,31 +7,31 @@ import data_processor
 ARCHETYPES = {
     "Mobility-Needs": {
         "desc": "Traveler with mobility needs, requires helpful, attentive staff and full step-free accessibility.",
-        "weights": {"Accessibility": 0.7, "Location": 0.15, "Service": 0.15, "Cleanliness": 0.0, "Value": 0.0, "WiFi/Quietness": 0.0, "Family-Friendliness": 0.0}
+        "weights": {"Accessibility": 0.6, "Location": 0.15, "Service": 0.15, "Cleanliness": 0.1, "Value": 0.0, "WiFi/Quietness": 0.0, "Family-Friendliness": 0.0}
     },
     "Business": {
         "desc": "Corporate traveler, needs rock-solid WiFi, workspace, quiet room for calls, and central location.",
-        "weights": {"WiFi/Quietness": 0.6, "Location": 0.0, "Value": 0.1, "Cleanliness": 0.0, "Service": 0.2, "Accessibility": 0.1, "Family-Friendliness": 0.0}
+        "weights": {"WiFi/Quietness": 0.5, "Location": 0.1, "Value": 0.1, "Cleanliness": 0.0, "Service": 0.2, "Accessibility": 0.1, "Family-Friendliness": 0.0}
     },
     "Family": {
         "desc": "Family traveling with kids, prefers family-friendly facilities, pool, connecting rooms, and space.",
-        "weights": {"Family-Friendliness": 0.7, "Value": 0.2, "Cleanliness": 0.1, "Service": 0.0, "Location": 0.0, "Accessibility": 0.0, "WiFi/Quietness": 0.0}
+        "weights": {"Family-Friendliness": 0.6, "Value": 0.1, "Cleanliness": 0.15, "Service": 0.0, "Location": 0.0, "Accessibility": 0.15, "WiFi/Quietness": 0.0}
     },
     "Budget": {
         "desc": "Budget backpacker, tight budget, value is everything, loves local culture cheaply.",
-        "weights": {"Value": 0.7, "Location": 0.2, "Service": 0.1, "Cleanliness": 0.0, "Accessibility": 0.0, "WiFi/Quietness": 0.0, "Family-Friendliness": 0.0}
+        "weights": {"Value": 0.6, "Location": 0.3, "Service": 0.1, "Cleanliness": 0.0, "Accessibility": 0.0, "WiFi/Quietness": 0.0, "Family-Friendliness": 0.0}
     },
     "Luxury": {
         "desc": "Leisure traveler expecting refinement, privacy, world-class spa, and five-star service.",
-        "weights": {"Service": 0.6, "Cleanliness": 0.2, "Location": 0.2, "Value": 0.0, "Accessibility": 0.0, "WiFi/Quietness": 0.0, "Family-Friendliness": 0.0}
+        "weights": {"Service": 0.6, "Cleanliness": 0.2, "Location": 0.15, "Value": 0.0, "Accessibility": 0.05, "WiFi/Quietness": 0.0, "Family-Friendliness": 0.0}
     },
     "Wellness": {
         "desc": "Guest on a self-care retreat seeking wellness, spa, and spotless cleanliness.",
-        "weights": {"Cleanliness": 0.5, "Service": 0.4, "WiFi/Quietness": 0.1, "Location": 0.0, "Value": 0.0, "Accessibility": 0.0, "Family-Friendliness": 0.0}
+        "weights": {"Cleanliness": 0.4, "Service": 0.4, "WiFi/Quietness": 0.1, "Location": 0.1, "Value": 0.0, "Accessibility": 0.0, "Family-Friendliness": 0.0}
     },
     "Solo-Traveler": {
         "desc": "Solo traveler, wants a central, walkable, and safe neighborhood base.",
-        "weights": {"Location": 0.6, "WiFi/Quietness": 0.2, "Value": 0.1, "Cleanliness": 0.0, "Service": 0.0, "Accessibility": 0.1, "Family-Friendliness": 0.0}
+        "weights": {"Location": 0.5, "WiFi/Quietness": 0.2, "Value": 0.2, "Cleanliness": 0.0, "Service": 0.05, "Accessibility": 0.05, "Family-Friendliness": 0.0}
     },
     "Foodie": {
         "desc": "Culinary traveler chasing food, local dining, authentic markets, and restaurant scenes.",
@@ -43,7 +43,7 @@ ARCHETYPES = {
     },
     "Remote-Worker": {
         "desc": "Digital nomad needing fast WiFi, workspace, and quiet room for calls.",
-        "weights": {"WiFi/Quietness": 0.7, "Value": 0.0, "Location": 0.1, "Cleanliness": 0.0, "Service": 0.2, "Accessibility": 0.0, "Family-Friendliness": 0.0}
+        "weights": {"WiFi/Quietness": 0.6, "Value": 0.0, "Location": 0.1, "Cleanliness": 0.0, "Service": 0.25, "Accessibility": 0.05, "Family-Friendliness": 0.0}
     },
     "Group-Leisure": {
         "desc": "Group of friends on a city break, splitting costs, near nightlife and bars.",

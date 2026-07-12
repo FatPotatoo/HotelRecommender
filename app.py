@@ -16,75 +16,128 @@ API_URL = "http://127.0.0.1:8000/api"
 # Custom Premium Styling
 st.markdown("""
 <style>
-    /* Dark elegant styling components */
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap');
+
+    /* Obsidian Premium styling */
     .stApp {
-        background-color: #0F121C;
-        color: #E2E8F0;
-        font-family: 'Outfit', 'Inter', sans-serif;
+        background-color: #0A0D16;
+        color: #CBD5E1;
+        font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
     }
     .stSidebar {
-        background-color: #171E30 !important;
+        background-color: #111625 !important;
+        border-right: 1px solid #1E293B;
     }
+
     /* Main Headers */
     h1, h2, h3 {
+        font-family: 'Outfit', sans-serif !important;
         color: #F8FAFC !important;
-        font-weight: 700 !important;
+        font-weight: 800 !important;
+        letter-spacing: -0.02em;
     }
+    
+    .gradient-title {
+        background: linear-gradient(90deg, #60A5FA 0%, #C084FC 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        font-size: 2.5rem;
+        font-weight: 800;
+    }
+
     /* Cards for Hotels */
     .hotel-card {
-        background-color: #1A233A;
-        border-radius: 12px;
-        padding: 20px;
-        margin-bottom: 20px;
-        border: 1px solid #2A3655;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        background-color: rgba(21, 27, 44, 0.75);
+        border-radius: 16px;
+        padding: 24px;
+        margin-bottom: 24px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        backdrop-filter: blur(16px);
+        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .hotel-card:hover {
+        transform: translateY(-2px);
+        border-color: rgba(96, 165, 250, 0.3);
+        box-shadow: 0 12px 40px 0 rgba(96, 165, 250, 0.12);
     }
     .hotel-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 12px;
-        border-bottom: 1px solid #2A3655;
-        padding-bottom: 8px;
+        margin-bottom: 18px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        padding-bottom: 12px;
     }
     .hotel-title {
-        font-size: 20px;
-        font-weight: 600;
+        font-size: 22px;
+        font-weight: 700;
         color: #60A5FA;
     }
     .score-badge {
-        background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);
+        background: linear-gradient(135deg, #2563EB 0%, #7C3AED 100%);
         color: white;
-        padding: 6px 14px;
-        border-radius: 20px;
-        font-weight: 700;
-        font-size: 16px;
+        padding: 8px 18px;
+        border-radius: 30px;
+        font-weight: 800;
+        font-size: 15px;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        box-shadow: 0 4px 15px rgba(37, 99, 235, 0.35);
+    }
+    
+    /* Ratings grid pills */
+    .rating-pill {
+        background-color: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 10px;
+        padding: 10px 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        transition: background-color 0.2s ease;
+    }
+    .rating-pill:hover {
+        background-color: rgba(255, 255, 255, 0.06);
     }
     .rating-label {
-        font-size: 14px;
-        color: #94A3B8;
-    }
-    .rating-val {
+        font-size: 11px;
         font-weight: 600;
-        color: #F8FAFC;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: #64748B;
     }
+    .rating-val-high {
+        font-size: 16px;
+        font-weight: 700;
+        color: #34D399; /* Emerald green */
+        text-shadow: 0 0 8px rgba(52, 211, 153, 0.15);
+    }
+    .rating-val-normal {
+        font-size: 16px;
+        font-weight: 700;
+        color: #F1F5F9;
+    }
+    .rating-val-na {
+        font-size: 16px;
+        font-weight: 700;
+        color: #475569; /* Slate gray */
+    }
+
     /* Alert styling for anomalies */
     .anomaly-alert {
-        background-color: #451A22;
-        border: 1px solid #7F1D1D;
+        background: linear-gradient(135deg, rgba(127, 29, 29, 0.25) 0%, rgba(69, 26, 34, 0.25) 100%);
+        border-left: 4px solid #EF4444;
+        border-top: 1px solid rgba(239, 68, 68, 0.15);
+        border-right: 1px solid rgba(239, 68, 68, 0.15);
+        border-bottom: 1px solid rgba(239, 68, 68, 0.15);
         border-radius: 8px;
-        padding: 15px;
-        color: #FECACA;
-        margin-bottom: 12px;
-    }
-    .anomaly-title {
-        font-weight: 700;
-        font-size: 16px;
-        color: #EF4444;
-        margin-bottom: 4px;
+        padding: 16px;
+        margin-bottom: 16px;
+        color: #FCA5A5;
     }
 </style>
-""", unsafe_allow_html=True)
+
 
 
 import re
@@ -139,6 +192,15 @@ def format_aspect_score(val) -> str:
     if val is None:
         return "N/A"
     return f"{val:.1f}"
+
+def render_pill_value_html(val) -> str:
+    """Formats aspect score to custom styled HTML depending on score rating."""
+    if val is None:
+        return '<span class="rating-val-na">N/A</span>'
+    elif val >= 4.5:
+        return f'<span class="rating-val-high">★ {val:.1f}</span>'
+    else:
+        return f'<span class="rating-val-normal">{val:.1f}</span>'
 
 def check_api_status():
     """Verify if the backend API server is running."""
@@ -222,6 +284,8 @@ if page == "🔍 Personalized Recommender":
             # Display Recommended Hotels
             st.subheader("Ranked Hotel Recommendations")
             for idx, hotel in enumerate(recs):
+                match_score_str = f"{hotel['match_score']:.2f}"
+                overall_rating_str = f"{hotel['overall_rating']:.2f}"
                 # Custom Hotel Card Card
                 st.markdown(f"""
                 <div class="hotel-card">
@@ -230,40 +294,40 @@ if page == "🔍 Personalized Recommender":
                             <span style="font-size: 20px; font-weight: 700; color: #60A5FA;">#{idx+1} {hotel['hotel_name']}</span>
                             <span style="background-color: #2D3748; padding: 3px 8px; border-radius: 4px; font-size: 12px; margin-left: 10px; color: #CBD5E1;">{hotel['hotel_category']}</span>
                         </div>
-                        <div class="score-badge">Match Score: {hotel['match_score']:.2f}</div>
+                        <div class="score-badge">Match Score: {match_score_str}</div>
                     </div>
                     <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 15px;">
-                        <div>
-                            <span class="rating-label">Overall Rating:</span> 
-                            <span class="rating-val">★ {hotel['overall_rating']:.2f}</span>
+                        <div class="rating-pill">
+                            <span class="rating-label">Overall Rating</span> 
+                            <span class="rating-val-normal">★ {overall_rating_str}</span>
                         </div>
-                        <div>
-                            <span class="rating-label">Cleanliness:</span> 
-                            <span class="rating-val">{format_aspect_score(hotel['aspect_scores']['Cleanliness'])}</span>
+                        <div class="rating-pill">
+                            <span class="rating-label">Cleanliness</span> 
+                            {render_pill_value_html(hotel['aspect_scores']['Cleanliness'])}
                         </div>
-                        <div>
-                            <span class="rating-label">Service:</span> 
-                            <span class="rating-val">{format_aspect_score(hotel['aspect_scores']['Service'])}</span>
+                        <div class="rating-pill">
+                            <span class="rating-label">Service</span> 
+                            {render_pill_value_html(hotel['aspect_scores']['Service'])}
                         </div>
-                        <div>
-                            <span class="rating-label">Location:</span> 
-                            <span class="rating-val">{format_aspect_score(hotel['aspect_scores']['Location'])}</span>
+                        <div class="rating-pill">
+                            <span class="rating-label">Location</span> 
+                            {render_pill_value_html(hotel['aspect_scores']['Location'])}
                         </div>
-                        <div>
-                            <span class="rating-label">Value:</span> 
-                            <span class="rating-val">{format_aspect_score(hotel['aspect_scores']['Value'])}</span>
+                        <div class="rating-pill">
+                            <span class="rating-label">Value</span> 
+                            {render_pill_value_html(hotel['aspect_scores']['Value'])}
                         </div>
-                        <div>
-                            <span class="rating-label">WiFi/Quietness:</span> 
-                            <span class="rating-val">{format_aspect_score(hotel['aspect_scores']['WiFi/Quietness'])}</span>
+                        <div class="rating-pill">
+                            <span class="rating-label">WiFi / Quietness</span> 
+                            {render_pill_value_html(hotel['aspect_scores']['WiFi/Quietness'])}
                         </div>
-                        <div>
-                            <span class="rating-label">Family-Friendliness:</span> 
-                            <span class="rating-val">{format_aspect_score(hotel['aspect_scores']['Family-Friendliness'])}</span>
+                        <div class="rating-pill">
+                            <span class="rating-label">Family Friendliness</span> 
+                            {render_pill_value_html(hotel['aspect_scores']['Family-Friendliness'])}
                         </div>
-                        <div>
-                            <span class="rating-label">Accessibility:</span> 
-                            <span class="rating-val">{format_aspect_score(hotel['aspect_scores']['Accessibility'])}</span>
+                        <div class="rating-pill">
+                            <span class="rating-label">Accessibility</span> 
+                            {render_pill_value_html(hotel['aspect_scores']['Accessibility'])}
                         </div>
                     </div>
                 </div>
@@ -303,16 +367,25 @@ elif page == "📈 Operations Monitor":
             anomalies = requests.get(f"{API_URL}/anomalies").json()
             
         if anomalies:
-            for a in anomalies:
-                st.markdown(f"""
-                <div class="anomaly-alert">
-                    <div class="anomaly-title">🚨 Operations Alert: {a['hotel_name']} ({a['hotel_id']})</div>
-                    <div>Aspect: <b>{a['aspect']}</b> | Rating Drop: <b style="color: #EF4444;">{a['drop_percentage']}%</b></div>
-                    <div style="font-size: 13px; margin-top: 4px; color: #FCA5A5;">
-                        Historic Average Aspect Score: {a['historic_score']:.2f} | Recent 60 Days Aspect Score: {a['recent_score']:.2f}
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
+            for idx, a in enumerate(anomalies):
+                with st.expander(f"🚨 Operations Alert: {a['hotel_name']} ({a['hotel_id']}) — Aspect: {a['aspect']} Drop: {a['drop_percentage']}%"):
+                    st.write(f"**Historic Average Aspect Score:** {a['historic_score']:.2f} | **Recent 60 Days Aspect Score:** {a['recent_score']:.2f}")
+                    
+                    # Fetch monthly rating stream of this hotel
+                    try:
+                        hist_res = requests.get(f"{API_URL}/seasonality/{a['hotel_id']}").json()
+                        ratings_stream = hist_res.get("ratings_stream")
+                        aspect = a['aspect']
+                        if ratings_stream and aspect in ratings_stream:
+                            st.markdown(f"**Monthly rating stream for {aspect}:**")
+                            aspect_data = ratings_stream[aspect]
+                            df_aspect = pd.DataFrame(list(aspect_data.items()), columns=["Month", f"{aspect} Rating"])
+                            df_aspect = df_aspect.sort_values(by="Month").reset_index(drop=True)
+                            st.line_chart(df_aspect.set_index("Month"), height=220)
+                        else:
+                            st.info("No rating stream timeline data available for this aspect.")
+                    except Exception as e:
+                        st.error(f"Could not load rating stream timeline chart: {e}")
         else:
             st.success("✅ No recent operational quality anomalies detected. All recent dips are classified as seasonal drifts.")
     else:
