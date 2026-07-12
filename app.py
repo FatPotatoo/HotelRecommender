@@ -138,10 +138,14 @@ st.markdown("""
         color: #FCA5A5;
     }
     
-    /* Hide Streamlit default header, main menu, deploy button, and footer */
+    /* Transparent header to keep sidebar toggle button visible */
     header, [data-testid="stHeader"] {
-        visibility: hidden !important;
-        height: 0px !important;
+        background-color: transparent !important;
+        background: transparent !important;
+    }
+    /* Hide Deploy button and Main menu action elements */
+    [data-testid="stHeaderActionElements"] {
+        display: none !important;
     }
     .stDeployButton, div[data-testid="stConnectionStatus"] {
         display: none !important;
