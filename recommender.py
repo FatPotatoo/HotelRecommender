@@ -67,46 +67,102 @@ def get_archetype_embeddings():
         _archetype_embeddings = model.encode(descs, convert_to_tensor=True)
     return _archetype_embeddings
 
-def extract_traveler_cohorts(desc: str) -> set[str]:
-    """Extracts target traveler type cohorts from traveler description."""
-    desc_lower = desc.lower()
+def extract_user_required_dimensions(desc: str) -> set[str]:
+    """Scans the traveler description to extract required dimensions as a set."""
+    dims = set()
+    desc_clean = desc.lower()
     
-    if any(w in desc_lower for w in ["family", "kid", "child", "toddler", "parent", "son", "daughter"]):
-        return {"family"}
-    if any(w in desc_lower for w in ["business", "corporate", "conference", "work", "meeting", "freelancer", "road-warrior"]):
-        return {"business"}
+    if any(w in desc_clean for w in ["safety", "safe"]):
+        dims.add("safety")
+    if any(w in desc_clean for w in ["culture", "market"]):
+        dims.add("local_culture")
+    if any(w in desc_clean for w in ["central", "office district", "walkable"]):
+        dims.add("location_central")
+    if any(w in desc_clean for w in ["wifi", "internet", "connection"]):
+        dims.add("wifi")
+    if any(w in desc_clean for w in ["meeting", "workspace", "conference"]):
+        dims.add("meeting_space")
+    if any(w in desc_clean for w in ["quiet", "peaceful", "noise", "sleep", "sound"]):
+        dims.add("quiet_room")
+    if any(w in desc_clean for w in ["budget", "cheap", "shoestring", "value", "price"]):
+        dims.add("value_for_money")
+    if any(w in desc_clean for w in ["luxury", "discerning", "five-star", "refinement", "service"]):
+        dims.add("luxury_service")
+    if any(w in desc_clean for w in ["spa", "wellness", "massage", "sauna"]):
+        dims.add("spa_and_wellness")
+    if any(w in desc_clean for w in ["kid", "child", "toddler", "family"]):
+        dims.add("family_friendly")
+    if "direct flight" in desc_clean:
+        dims.add("direct_flights")
+    if any(w in desc_clean for w in ["accessibility", "wheelchair", "mobility", "step-free", "handicap", "elevator"]):
+        dims.add("accessibility")
+    if "pool" in desc_clean:
+        dims.add("pool")
         
-    cohorts = {"leisure"}
-    if any(w in desc_lower for w in ["solo", "single", "alone", "myself", "independent"]):
-        cohorts.add("solo")
-    if any(w in desc_lower for w in ["couple", "romantic", "honeymoon", "partner", "wife", "husband", "getaway"]):
-        cohorts.add("couple")
-    if any(w in desc_lower for w in ["group", "friends", "bachelor", "colleagues"]):
-        cohorts.add("group")
-    return cohorts
+    return dims
 
-def detect_review_cohorts(review: dict) -> set[str]:
-    """Scans review text and metadata to return a set of all detected traveler cohorts."""
-    cohorts = set()
-    t_type = review.get("traveler_type")
-    if t_type:
-        cohorts.add(t_type.lower())
+def calculate_review_dimension_score(review: dict, required_dims: set[str]) -> float:
+    """Calculates graded score [0, 1] based on overlap and net sentiment of review text and required dimensions."""
+    if not required_dims:
+        return 1.0
         
-    text_lower = review.get("review_text", "").lower()
-    if any(w in text_lower for w in ["kids", "children", "toddler", "family", "our son", "our daughter", "connecting room"]):
-        cohorts.add("family")
-    if any(w in text_lower for w in ["husband", "wife", "partner", "couple", "romantic", "anniversary", "getaway", "honeymoon"]):
-        cohorts.add("couple")
-    if any(w in text_lower for w in ["business", "corporate", "conference", "work", "meeting", "meeting room", "facilities for work", "office district"]):
-        cohorts.add("business")
-    if any(w in text_lower for w in ["friends", "group", "splitting", "buddies", "colleagues"]):
-        cohorts.add("group")
-    if any(w in text_lower for w in ["solo", "alone", "myself", "independent", "single"]):
-        cohorts.add("solo")
+    import data_processor
+    import sentiment_engine
+    
+    sentences = data_processor.segment_sentences(review.get("review_text", ""))
+    dim_hits = {d: [] for d in required_dims}
+    
+    for sentence in sentences:
+        res = sentiment_engine.extract_sentence_aspect_sentiment(sentence)
+        s_text = sentence.lower()
         
-    if not cohorts:
-        cohorts.add("leisure")
-    return cohorts
+        for d in required_dims:
+            matched = False
+            if d == "safety" and any(w in s_text for w in ["safety", "safe"]):
+                matched = True
+            elif d == "local_culture" and any(w in s_text for w in ["culture", "market"]):
+                matched = True
+            elif d == "location_central" and (res["aspect"] == "Location" or any(w in s_text for w in ["central", "walkable"])):
+                matched = True
+            elif d == "wifi" and (res["aspect"] == "WiFi/Quietness" and any(w in s_text for w in ["wifi", "internet", "connection"])):
+                matched = True
+            elif d == "meeting_space" and any(w in s_text for w in ["meeting", "workspace", "conference"]):
+                matched = True
+            elif d == "quiet_room" and (res["aspect"] == "WiFi/Quietness" and any(w in s_text for w in ["quiet", "peaceful", "noise", "sleep", "sound"])):
+                matched = True
+            elif d == "value_for_money" and (res["aspect"] == "Value" or any(w in s_text for w in ["budget", "cheap", "value", "price"])):
+                matched = True
+            elif d == "luxury_service" and (res["aspect"] == "Service" or any(w in s_text for w in ["luxury", "five-star", "impeccable", "service"])):
+                matched = True
+            elif d == "spa_and_wellness" and any(w in s_text for w in ["spa", "wellness", "massage", "sauna"]):
+                matched = True
+            elif d == "family_friendly" and (res["aspect"] == "Family-Friendliness" or any(w in s_text for w in ["kid", "child", "toddler", "family"])):
+                matched = True
+            elif d == "direct_flights" and "direct flight" in s_text:
+                matched = True
+            elif d == "accessibility" and (res["aspect"] == "Accessibility" or any(w in s_text for w in ["accessibility", "wheelchair", "mobility", "step-free", "handicap", "elevator"])):
+                matched = True
+            elif d == "pool" and "pool" in s_text:
+                matched = True
+                
+            if matched:
+                dim_hits[d].append(res["sentiment"])
+                
+    scores = []
+    for d in required_dims:
+        hits = dim_hits[d]
+        if hits:
+            if -1 in hits:
+                scores.append(-1.0)
+            elif 1 in hits:
+                scores.append(1.0)
+            else:
+                scores.append(0.0)
+        else:
+            scores.append(0.0)
+            
+    avg_score = sum(scores) / len(required_dims)
+    return max(0.0, min(1.0, (avg_score + 1.0) / 2.0))
 
 
 
@@ -309,9 +365,7 @@ class Recommender:
         recommended = hotel_scores[:top_n]
         
         # 4. Fetch Evidence Citations using Structured RAG
-        # Identify core aspects the user cares about (weight > 0.15)
-        core_aspects = [aspect for aspect, w in weights.items() if w > 0.15]
-        target_cohorts = extract_traveler_cohorts(desc)
+        required_dims = extract_user_required_dimensions(desc)
         
         # Precompute query embedding for vector similarity ranking
         try:
@@ -342,37 +396,13 @@ class Recommender:
                 min_date = max_date = None
                 total_days = 0
             
-            # A. Structured Filter: keep reviews that contain positive core aspects and NO negative mentions of any aspect
-            candidate_reviews = []
-            for r in hotel_reviews:
-                is_valid = True
-                pos_core_count = 0
-                sentences = data_processor.segment_sentences(r["review_text"])
-                for sentence in sentences:
-                    res = sentiment_engine.extract_sentence_aspect_sentiment(sentence)
-                    if res["sentiment"] == -1:
-                        is_valid = False
-                        break
-                    if res["aspect"] in core_aspects and res["sentiment"] == 1:
-                        pos_core_count += 1
-                        
-                if is_valid and pos_core_count > 0:
-                    candidate_reviews.append((r, pos_core_count, len(sentences)))
-                    
-            # Fallback if no reviews matched the positive aspect filter
-            if not candidate_reviews:
-                for r in hotel_reviews:
-                    sentences = data_processor.segment_sentences(r["review_text"])
-                    candidate_reviews.append((r, 0, len(sentences)))
-                    
             # B. Scorer (Vector Search Similarity + Traveler Type + Freshness + Positive Sentiment)
             scored_candidates = []
-            candidate_review_dicts = [item[0] for item in candidate_reviews]
             
-            if model is not None and candidate_review_dicts:
+            if model is not None and hotel_reviews:
                 try:
                     # Find which review IDs are not in cache
-                    uncached_reviews = [r for r in candidate_review_dicts if r["review_id"] not in self.review_embeddings_cache]
+                    uncached_reviews = [r for r in hotel_reviews if r["review_id"] not in self.review_embeddings_cache]
                     if uncached_reviews:
                         uncached_texts = [r["review_text"] for r in uncached_reviews]
                         uncached_embs = model.encode(uncached_texts, convert_to_tensor=True)
@@ -381,17 +411,14 @@ class Recommender:
                             
                     # Load embeddings from cache and stack
                     import torch
-                    review_embs = torch.stack([self.review_embeddings_cache[r["review_id"]] for r in candidate_review_dicts])
+                    review_embs = torch.stack([self.review_embeddings_cache[r["review_id"]] for r in hotel_reviews])
                     
                     cos_scores = util.cos_sim(query_emb, review_embs)[0]
-                    for idx, (r, pos_core_count, total_s) in enumerate(candidate_reviews):
+                    for idx, r in enumerate(hotel_reviews):
                         sim_score = max(0.0, min(1.0, cos_scores[idx].item()))
                         
-                        # Traveler type Jaccard similarity score
-                        review_cohorts = detect_review_cohorts(r)
-                        intersection = target_cohorts.intersection(review_cohorts)
-                        union = target_cohorts.union(review_cohorts)
-                        traveler_type_score = len(intersection) / len(union) if union else 0.0
+                        # Traveler type matching score (set-based Jaccard similarity)
+                        dimension_match_score = calculate_review_dimension_score(r, required_dims)
                         
                         # Freshness score
                         try:
@@ -401,53 +428,53 @@ class Recommender:
                             freshness = 1.0
                             
                         # Positive sentiment ratio score
-                        pos_sentiment_score = pos_core_count / total_s if total_s > 0 else 0.0
+                        sentences = data_processor.segment_sentences(r["review_text"])
+                        pos_count = sum(1 for s in sentences if sentiment_engine.extract_sentence_aspect_sentiment(s)["sentiment"] == 1)
+                        pos_sentiment_score = pos_count / len(sentences) if sentences else 0.0
                         
                         final_score = (
                             0.50 * sim_score +
-                            0.25 * traveler_type_score +
+                            0.25 * dimension_match_score +
                             0.15 * freshness +
                             0.10 * pos_sentiment_score
                         )
                         scored_candidates.append((r, final_score))
                 except Exception:
-                    for r, pos_core_count, total_s in candidate_reviews:
+                    for r in hotel_reviews:
                         sim_score = (float(r["rating"]) - 1.0) / 4.0
-                        review_cohorts = detect_review_cohorts(r)
-                        intersection = target_cohorts.intersection(review_cohorts)
-                        union = target_cohorts.union(review_cohorts)
-                        traveler_type_score = len(intersection) / len(union) if union else 0.0
+                        dimension_match_score = calculate_review_dimension_score(r, required_dims)
                         try:
                             r_date = datetime.strptime(r["review_date"], "%Y-%m-%d")
                             freshness = (r_date - min_date).days / total_days if total_days > 0 else 1.0
                         except Exception:
                             freshness = 1.0
-                        pos_sentiment_score = pos_core_count / total_s if total_s > 0 else 0.0
+                        sentences = data_processor.segment_sentences(r["review_text"])
+                        pos_count = sum(1 for s in sentences if sentiment_engine.extract_sentence_aspect_sentiment(s)["sentiment"] == 1)
+                        pos_sentiment_score = pos_count / len(sentences) if sentences else 0.0
                         
                         final_score = (
                             0.50 * sim_score +
-                            0.25 * traveler_type_score +
+                            0.25 * dimension_match_score +
                             0.15 * freshness +
                             0.10 * pos_sentiment_score
                         )
                         scored_candidates.append((r, final_score))
             else:
-                for r, pos_core_count, total_s in candidate_reviews:
+                for r in hotel_reviews:
                     sim_score = (float(r["rating"]) - 1.0) / 4.0
-                    review_cohorts = detect_review_cohorts(r)
-                    intersection = target_cohorts.intersection(review_cohorts)
-                    union = target_cohorts.union(review_cohorts)
-                    traveler_type_score = len(intersection) / len(union) if union else 0.0
+                    dimension_match_score = calculate_review_dimension_score(r, required_dims)
                     try:
                         r_date = datetime.strptime(r["review_date"], "%Y-%m-%d")
                         freshness = (r_date - min_date).days / total_days if total_days > 0 else 1.0
                     except Exception:
                         freshness = 1.0
-                    pos_sentiment_score = pos_core_count / total_s if total_s > 0 else 0.0
+                    sentences = data_processor.segment_sentences(r["review_text"])
+                    pos_count = sum(1 for s in sentences if sentiment_engine.extract_sentence_aspect_sentiment(s)["sentiment"] == 1)
+                    pos_sentiment_score = pos_count / len(sentences) if sentences else 0.0
                     
                     final_score = (
                         0.50 * sim_score +
-                        0.25 * traveler_type_score +
+                        0.25 * dimension_match_score +
                         0.15 * freshness +
                         0.10 * pos_sentiment_score
                     )

@@ -123,6 +123,8 @@ def get_desired_dimensions(desc: str) -> list[str]:
         dimensions.append("direct_flights")
     if "accessibility" in desc_lower or "wheelchair" in desc_lower or "mobility" in desc_lower or "step-free" in desc_lower:
         dimensions.append("accessibility")
+    if "pool" in desc_lower:
+        dimensions.append("pool")
         
     if not dimensions:
         parts = [p.strip() for p in desc.split(",") if len(p.strip()) > 3]
