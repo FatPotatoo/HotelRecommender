@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import streamlit as st
 import requests
 import pandas as pd
@@ -198,7 +199,7 @@ def render_pill_value_html(val) -> str:
     if val is None:
         return '<span class="rating-val-na">N/A</span>'
     elif val >= 4.5:
-        return f'<span class="rating-val-high">★ {val:.1f}</span>'
+        return f'<span class="rating-val-high">&#9733; {val:.1f}</span>'
     else:
         return f'<span class="rating-val-normal">{val:.1f}</span>'
 
@@ -299,7 +300,7 @@ if page == "🔍 Personalized Recommender":
                     <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 15px;">
                         <div class="rating-pill">
                             <span class="rating-label">Overall Rating</span> 
-                            <span class="rating-val-normal">★ {overall_rating_str}</span>
+                            <span class="rating-val-normal">&#9733; {overall_rating_str}</span>
                         </div>
                         <div class="rating-pill">
                             <span class="rating-label">Cleanliness</span> 
