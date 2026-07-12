@@ -134,6 +134,12 @@ def get_desired_dimensions(desc: str) -> list[str]:
             dimensions.append(clean)
     return dimensions
 
+def format_aspect_score(val) -> str:
+    """Formats an aspect score to 1 decimal place, or returns 'N/A' if None."""
+    if val is None:
+        return "N/A"
+    return f"{val:.1f}"
+
 def check_api_status():
     """Verify if the backend API server is running."""
     try:
@@ -233,31 +239,31 @@ if page == "🔍 Personalized Recommender":
                         </div>
                         <div>
                             <span class="rating-label">Cleanliness:</span> 
-                            <span class="rating-val">{hotel['aspect_scores']['Cleanliness']:.1f}</span>
+                            <span class="rating-val">{format_aspect_score(hotel['aspect_scores']['Cleanliness'])}</span>
                         </div>
                         <div>
                             <span class="rating-label">Service:</span> 
-                            <span class="rating-val">{hotel['aspect_scores']['Service']:.1f}</span>
+                            <span class="rating-val">{format_aspect_score(hotel['aspect_scores']['Service'])}</span>
                         </div>
                         <div>
                             <span class="rating-label">Location:</span> 
-                            <span class="rating-val">{hotel['aspect_scores']['Location']:.1f}</span>
+                            <span class="rating-val">{format_aspect_score(hotel['aspect_scores']['Location'])}</span>
                         </div>
                         <div>
                             <span class="rating-label">Value:</span> 
-                            <span class="rating-val">{hotel['aspect_scores']['Value']:.1f}</span>
+                            <span class="rating-val">{format_aspect_score(hotel['aspect_scores']['Value'])}</span>
                         </div>
                         <div>
                             <span class="rating-label">WiFi/Quietness:</span> 
-                            <span class="rating-val">{hotel['aspect_scores']['WiFi/Quietness']:.1f}</span>
+                            <span class="rating-val">{format_aspect_score(hotel['aspect_scores']['WiFi/Quietness'])}</span>
                         </div>
                         <div>
                             <span class="rating-label">Family-Friendliness:</span> 
-                            <span class="rating-val">{hotel['aspect_scores']['Family-Friendliness']:.1f}</span>
+                            <span class="rating-val">{format_aspect_score(hotel['aspect_scores']['Family-Friendliness'])}</span>
                         </div>
                         <div>
                             <span class="rating-label">Accessibility:</span> 
-                            <span class="rating-val">{hotel['aspect_scores']['Accessibility']:.1f}</span>
+                            <span class="rating-val">{format_aspect_score(hotel['aspect_scores']['Accessibility'])}</span>
                         </div>
                     </div>
                 </div>

@@ -322,10 +322,11 @@ class Recommender:
             meta = self.hotel_meta[hotel_id]
             avg_rating = self.hotel_avg_ratings[hotel_id]
             
-            # A. Aspect-specific utility score
             aspect_utility = 0.0
             for aspect, weight in weights.items():
-                aspect_utility += aspect_scores.get(aspect, 3.0) * weight
+                score = aspect_scores.get(aspect)
+                score_val = score if score is not None else 2.5
+                aspect_utility += score_val * weight
                 
             # B. Blended final score (80% aspect match + 20% overall reputation)
             final_score = 0.80 * aspect_utility + 0.20 * avg_rating

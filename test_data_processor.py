@@ -44,7 +44,7 @@ class TestDataProcessor(unittest.TestCase):
         self.assertEqual(hotel_scores["Service"], 1.0)
         
         for aspect in ["Location", "Value", "Accessibility", "WiFi/Quietness", "Family-Friendliness"]:
-            self.assertEqual(hotel_scores[aspect], 3.0)
+            self.assertIsNone(hotel_scores[aspect])
 
     def test_compile_aspect_scorecard_fallback_default(self):
         mock_reviews = [
@@ -61,7 +61,7 @@ class TestDataProcessor(unittest.TestCase):
         hotel_scores = scorecard["H002"]
         
         for aspect in data_processor.ASPECTS:
-            self.assertEqual(hotel_scores[aspect], 4.5)
+            self.assertIsNone(hotel_scores[aspect])
 
     def test_detect_quality_anomalies_true_positive(self):
         # Hotel H003 (Quality Anomaly):

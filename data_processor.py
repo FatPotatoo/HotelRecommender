@@ -80,10 +80,9 @@ def compile_aspect_scorecard(reviews: list[dict]) -> dict:
             
             if total > 0:
                 score = 3.0 + 2.0 * ((pos - neg) / total)
+                scorecard[hotel_id][aspect] = round(max(1.0, min(5.0, score)), 2)
             else:
-                score = overall_rating_fallback
-                
-            scorecard[hotel_id][aspect] = round(max(1.0, min(5.0, score)), 2)
+                scorecard[hotel_id][aspect] = None
             
     return scorecard
 
