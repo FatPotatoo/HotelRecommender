@@ -180,6 +180,10 @@ if page == "🔍 Personalized Recommender":
                                                format_func=lambda x: f"{x}: {profiles[x]}")
             query_str = selected_profile_id
             description = profiles[selected_profile_id]
+            
+            # Show full description in case it is clipped in the selectbox UI
+            st.info(f"📋 **Full Description:** {description}")
+            
             desired_dims = get_desired_dimensions(description)
             st.markdown("**Desired Dimensions:** " + " ".join([f"`{dim}`" for dim in desired_dims]))
         else:

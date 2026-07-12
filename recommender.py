@@ -85,6 +85,29 @@ def extract_traveler_cohorts(desc: str) -> set[str]:
         cohorts.add("group")
     return cohorts
 
+def detect_review_cohorts(review: dict) -> set[str]:
+    """Scans review text and metadata to return a set of all detected traveler cohorts."""
+    cohorts = set()
+    t_type = review.get("traveler_type")
+    if t_type:
+        cohorts.add(t_type.lower())
+        
+    text_lower = review.get("review_text", "").lower()
+    if any(w in text_lower for w in ["kids", "children", "toddler", "family", "our son", "our daughter", "connecting room"]):
+        cohorts.add("family")
+    if any(w in text_lower for w in ["husband", "wife", "partner", "couple", "romantic", "anniversary", "getaway", "honeymoon"]):
+        cohorts.add("couple")
+    if any(w in text_lower for w in ["business", "corporate", "conference", "work", "meeting", "meeting room", "facilities for work", "office district"]):
+        cohorts.add("business")
+    if any(w in text_lower for w in ["friends", "group", "splitting", "buddies", "colleagues"]):
+        cohorts.add("group")
+    if any(w in text_lower for w in ["solo", "alone", "myself", "independent", "single"]):
+        cohorts.add("solo")
+        
+    if not cohorts:
+        cohorts.add("leisure")
+    return cohorts
+
 
 
 def get_user_profiles(profiles_path: str) -> dict:
@@ -303,11 +326,27 @@ class Recommender:
             hotel_id = rec["hotel_id"]
             hotel_reviews = [r for r in self.reviews if r["hotel_id"] == hotel_id]
             
+            # Precompute hotel-specific date bounds for freshness normalization
+            from datetime import datetime
+            hotel_dates = []
+            for r in hotel_reviews:
+                try:
+                    hotel_dates.append(datetime.strptime(r["review_date"], "%Y-%m-%d"))
+                except Exception:
+                    pass
+            if hotel_dates:
+                min_date = min(hotel_dates)
+                max_date = max(hotel_dates)
+                total_days = (max_date - min_date).days
+            else:
+                min_date = max_date = None
+                total_days = 0
+            
             # A. Structured Filter: keep reviews that contain positive core aspects and NO negative mentions of any aspect
             candidate_reviews = []
             for r in hotel_reviews:
                 is_valid = True
-                match_count = 0
+                pos_core_count = 0
                 sentences = data_processor.segment_sentences(r["review_text"])
                 for sentence in sentences:
                     res = sentiment_engine.extract_sentence_aspect_sentiment(sentence)
@@ -315,27 +354,25 @@ class Recommender:
                         is_valid = False
                         break
                     if res["aspect"] in core_aspects and res["sentiment"] == 1:
-                        match_count += 1
+                        pos_core_count += 1
                         
-                if is_valid and match_count > 0:
-                    candidate_reviews.append((r, match_count))
+                if is_valid and pos_core_count > 0:
+                    candidate_reviews.append((r, pos_core_count, len(sentences)))
                     
-            # Sort candidates by match intensity and review rating first
-            candidate_reviews.sort(key=lambda x: (x[1], float(x[0]["rating"])), reverse=True)
-            
-            # Slice to only the top 15 candidates for vector search
-            candidate_reviews = [r for r, count in candidate_reviews[:15]]
-            
             # Fallback if no reviews matched the positive aspect filter
             if not candidate_reviews:
-                candidate_reviews = hotel_reviews
-                
-            # B. Semantic Ranker (Vector Search + Review Rating)
+                for r in hotel_reviews:
+                    sentences = data_processor.segment_sentences(r["review_text"])
+                    candidate_reviews.append((r, 0, len(sentences)))
+                    
+            # B. Scorer (Vector Search Similarity + Traveler Type + Freshness + Positive Sentiment)
             scored_candidates = []
-            if model is not None and candidate_reviews:
+            candidate_review_dicts = [item[0] for item in candidate_reviews]
+            
+            if model is not None and candidate_review_dicts:
                 try:
                     # Find which review IDs are not in cache
-                    uncached_reviews = [r for r in candidate_reviews if r["review_id"] not in self.review_embeddings_cache]
+                    uncached_reviews = [r for r in candidate_review_dicts if r["review_id"] not in self.review_embeddings_cache]
                     if uncached_reviews:
                         uncached_texts = [r["review_text"] for r in uncached_reviews]
                         uncached_embs = model.encode(uncached_texts, convert_to_tensor=True)
@@ -344,32 +381,77 @@ class Recommender:
                             
                     # Load embeddings from cache and stack
                     import torch
-                    review_embs = torch.stack([self.review_embeddings_cache[r["review_id"]] for r in candidate_reviews])
+                    review_embs = torch.stack([self.review_embeddings_cache[r["review_id"]] for r in candidate_review_dicts])
                     
                     cos_scores = util.cos_sim(query_emb, review_embs)[0]
-                    for idx, r in enumerate(candidate_reviews):
-                        sim_score = cos_scores[idx].item()
-                        # Normalize rating to [0, 1] range
-                        rating_val = (float(r["rating"]) - 1.0) / 4.0
-                        blended_score = 0.70 * sim_score + 0.30 * rating_val
+                    for idx, (r, pos_core_count, total_s) in enumerate(candidate_reviews):
+                        sim_score = max(0.0, min(1.0, cos_scores[idx].item()))
                         
-                        # Apply rank boost if the reviewer traveler type matches user's target cohorts
-                        r_type = r.get("traveler_type", "").lower()
-                        cohort_boost = 0.15 if r_type in target_cohorts else 0.0
+                        # Traveler type Jaccard similarity score
+                        review_cohorts = detect_review_cohorts(r)
+                        intersection = target_cohorts.intersection(review_cohorts)
+                        union = target_cohorts.union(review_cohorts)
+                        traveler_type_score = len(intersection) / len(union) if union else 0.0
                         
-                        scored_candidates.append((r, blended_score + cohort_boost))
+                        # Freshness score
+                        try:
+                            r_date = datetime.strptime(r["review_date"], "%Y-%m-%d")
+                            freshness = (r_date - min_date).days / total_days if total_days > 0 else 1.0
+                        except Exception:
+                            freshness = 1.0
+                            
+                        # Positive sentiment ratio score
+                        pos_sentiment_score = pos_core_count / total_s if total_s > 0 else 0.0
+                        
+                        final_score = (
+                            0.50 * sim_score +
+                            0.25 * traveler_type_score +
+                            0.15 * freshness +
+                            0.10 * pos_sentiment_score
+                        )
+                        scored_candidates.append((r, final_score))
                 except Exception:
-                    for r in candidate_reviews:
-                        rating_val = float(r["rating"])
-                        r_type = r.get("traveler_type", "").lower()
-                        cohort_boost = 0.60 if r_type in target_cohorts else 0.0
-                        scored_candidates.append((r, rating_val + cohort_boost))
+                    for r, pos_core_count, total_s in candidate_reviews:
+                        sim_score = (float(r["rating"]) - 1.0) / 4.0
+                        review_cohorts = detect_review_cohorts(r)
+                        intersection = target_cohorts.intersection(review_cohorts)
+                        union = target_cohorts.union(review_cohorts)
+                        traveler_type_score = len(intersection) / len(union) if union else 0.0
+                        try:
+                            r_date = datetime.strptime(r["review_date"], "%Y-%m-%d")
+                            freshness = (r_date - min_date).days / total_days if total_days > 0 else 1.0
+                        except Exception:
+                            freshness = 1.0
+                        pos_sentiment_score = pos_core_count / total_s if total_s > 0 else 0.0
+                        
+                        final_score = (
+                            0.50 * sim_score +
+                            0.25 * traveler_type_score +
+                            0.15 * freshness +
+                            0.10 * pos_sentiment_score
+                        )
+                        scored_candidates.append((r, final_score))
             else:
-                for r in candidate_reviews:
-                    rating_val = float(r["rating"])
-                    r_type = r.get("traveler_type", "").lower()
-                    cohort_boost = 0.60 if r_type in target_cohorts else 0.0
-                    scored_candidates.append((r, rating_val + cohort_boost))
+                for r, pos_core_count, total_s in candidate_reviews:
+                    sim_score = (float(r["rating"]) - 1.0) / 4.0
+                    review_cohorts = detect_review_cohorts(r)
+                    intersection = target_cohorts.intersection(review_cohorts)
+                    union = target_cohorts.union(review_cohorts)
+                    traveler_type_score = len(intersection) / len(union) if union else 0.0
+                    try:
+                        r_date = datetime.strptime(r["review_date"], "%Y-%m-%d")
+                        freshness = (r_date - min_date).days / total_days if total_days > 0 else 1.0
+                    except Exception:
+                        freshness = 1.0
+                    pos_sentiment_score = pos_core_count / total_s if total_s > 0 else 0.0
+                    
+                    final_score = (
+                        0.50 * sim_score +
+                        0.25 * traveler_type_score +
+                        0.15 * freshness +
+                        0.10 * pos_sentiment_score
+                    )
+                    scored_candidates.append((r, final_score))
                     
             scored_candidates.sort(key=lambda x: x[1], reverse=True)
             
