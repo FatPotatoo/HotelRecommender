@@ -21,6 +21,14 @@ def startup_event():
     try:
         print("Initializing Recommender Engine...")
         rec_engine = recommender.Recommender(REVIEWS_PATH, PROFILES_PATH)
+        
+        # Pre-warm NLP models and archetype embeddings to avoid first-query cold-start latency
+        import sentiment_engine
+        print("Pre-warming NLP models...")
+        sentiment_engine.get_sentence_transformer()
+        sentiment_engine.get_zero_shot_classifier()
+        recommender.get_archetype_embeddings()
+        
         print("Recommender initialized successfully!")
     except Exception as e:
         print(f"Critical error loading recommender engine: {e}")
