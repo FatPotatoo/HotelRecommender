@@ -11,7 +11,7 @@ ARCHETYPES = {
     },
     "Business": {
         "desc": "Corporate traveler, needs rock-solid WiFi, workspace, quiet room for calls, and central location.",
-        "weights": {"WiFi/Quietness": 0.6, "Location": 0.0, "Value": 0.0, "Cleanliness": 0.0, "Service": 0.2, "Accessibility": 0.2, "Family-Friendliness": 0.0}
+        "weights": {"WiFi/Quietness": 0.6, "Location": 0.0, "Value": 0.1, "Cleanliness": 0.0, "Service": 0.2, "Accessibility": 0.1, "Family-Friendliness": 0.0}
     },
     "Family": {
         "desc": "Family traveling with kids, prefers family-friendly facilities, pool, connecting rooms, and space.",
@@ -342,9 +342,11 @@ class Recommender:
                 applied_penalty += quality_penalty
             
             # D. Apply accessibility penalty if applicable
+            accessibility_penalty = 0.0
             has_negative_access = self.hotel_neg_accessibility.get(hotel_id, 0) > 0
             if is_mobility_profile and has_negative_access:
                 final_score -= 2.50
+                accessibility_penalty = 2.50
                 applied_penalty += 2.50
                 
             hotel_scores.append({
@@ -354,7 +356,9 @@ class Recommender:
                 "match_score": round(max(1.0, min(5.0, final_score)), 2),
                 "aspect_scores": aspect_scores,
                 "overall_rating": avg_rating,
-                "applied_penalty": round(applied_penalty, 2)
+                "applied_penalty": round(applied_penalty, 2),
+                "quality_penalty": round(quality_penalty, 2),
+                "accessibility_penalty": round(accessibility_penalty, 2)
             })
             
         # Sort descending by match score, secondary sorting by overall rating

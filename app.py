@@ -269,9 +269,13 @@ if page == "🔍 Personalized Recommender":
                 </div>
                 """, unsafe_allow_html=True)
                 
-                # Render Accessibility Hard Filter Warning if Penalty applied
-                if hotel.get("applied_penalty", 0.0) > 0:
-                    st.warning(f"⚠️ **Accessibility hard filter penalty applied (-{hotel['applied_penalty']} points)**. This hotel has negative accessibility reviews.")
+                # Render Accessibility Hard Filter Warning if applicable
+                if hotel.get("accessibility_penalty", 0.0) > 0:
+                    st.warning(f"⚠️ **Accessibility hard filter penalty applied (-{hotel['accessibility_penalty']:.2f} points)**. This hotel has negative accessibility reviews.")
+                
+                # Render Aspect Quality Floor Penalty if applicable
+                if hotel.get("quality_penalty", 0.0) > 0:
+                    st.warning(f"⚠️ **Aspect quality floor penalty applied (-{hotel['quality_penalty']:.2f} points)**. Aspect ratings fall below the 2.5 baseline.")
                 
                 # Evidence citations expander
                 with st.expander(f"💬 Read Verified Evidence Citations (Structured RAG matches) for {hotel['hotel_name']}"):
