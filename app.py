@@ -137,6 +137,21 @@ st.markdown("""
         margin-bottom: 16px;
         color: #FCA5A5;
     }
+    
+    /* Hide Streamlit default header, main menu, deploy button, and footer */
+    header, [data-testid="stHeader"] {
+        visibility: hidden !important;
+        height: 0px !important;
+    }
+    .stDeployButton, div[data-testid="stConnectionStatus"] {
+        display: none !important;
+    }
+    footer {
+        visibility: hidden !important;
+    }
+    #MainMenu {
+        visibility: hidden !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
