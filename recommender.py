@@ -10,48 +10,44 @@ ARCHETYPES = {
         "weights": {"Accessibility": 0.7, "Location": 0.15, "Service": 0.15, "Cleanliness": 0.0, "Value": 0.0, "WiFi/Quietness": 0.0, "Family-Friendliness": 0.0}
     },
     "Business": {
-        "desc": "Corporate road-warrior, frequent business traveler, remote worker or long-stay freelancer, needs rock-solid WiFi, workspace, quiet room for calls, and central location near the office district.",
-        "weights": {"WiFi/Quietness": 0.6, "Location": 0.3, "Value": 0.1, "Cleanliness": 0.0, "Service": 0.0, "Accessibility": 0.0, "Family-Friendliness": 0.0}
+        "desc": "Corporate traveler, needs rock-solid WiFi, workspace, quiet room for calls, and central location.",
+        "weights": {"WiFi/Quietness": 0.6, "Location": 0.0, "Value": 0.0, "Cleanliness": 0.0, "Service": 0.2, "Accessibility": 0.2, "Family-Friendliness": 0.0}
     },
     "Family": {
-        "desc": "Family with children, parents traveling with toddlers, values connecting rooms, clean, spacious rooms, family-friendly facilities and pool.",
+        "desc": "Family traveling with kids, prefers family-friendly facilities, pool, connecting rooms, and space.",
         "weights": {"Family-Friendliness": 0.7, "Value": 0.2, "Cleanliness": 0.1, "Service": 0.0, "Location": 0.0, "Accessibility": 0.0, "WiFi/Quietness": 0.0}
     },
     "Budget": {
-        "desc": "Budget backpacker, shoestring traveler, tight budget, value is everything, loves local culture cheaply, open to multi-city routing to save money.",
+        "desc": "Budget backpacker, tight budget, value is everything, loves local culture cheaply.",
         "weights": {"Value": 0.7, "Location": 0.2, "Service": 0.1, "Cleanliness": 0.0, "Accessibility": 0.0, "WiFi/Quietness": 0.0, "Family-Friendliness": 0.0}
     },
     "Luxury": {
-        "desc": "Discerning traveler expecting luxury, privacy and refinement, wants a world-class spa, expects impeccable five-star service, budget is no object.",
+        "desc": "Leisure traveler expecting refinement, privacy, world-class spa, and five-star service.",
         "weights": {"Service": 0.6, "Cleanliness": 0.2, "Location": 0.2, "Value": 0.0, "Accessibility": 0.0, "WiFi/Quietness": 0.0, "Family-Friendliness": 0.0}
     },
     "Wellness": {
-        "desc": "Guest on a self-care retreat, solo wellness traveler, seeking a spa and wellness retreat, values spotless cleanliness.",
+        "desc": "Guest on a self-care retreat seeking wellness, spa, and spotless cleanliness.",
         "weights": {"Cleanliness": 0.5, "Service": 0.4, "WiFi/Quietness": 0.1, "Location": 0.0, "Value": 0.0, "Accessibility": 0.0, "Family-Friendliness": 0.0}
     },
     "Solo-Traveler": {
-        "desc": "Solo traveler, solo female traveler, safety-conscious, wants a central, walkable, and safe neighborhood base.",
-        "weights": {"Location": 0.6, "WiFi/Quietness": 0.2, "Value": 0.2, "Cleanliness": 0.0, "Service": 0.0, "Accessibility": 0.0, "Family-Friendliness": 0.0}
+        "desc": "Solo traveler, wants a central, walkable, and safe neighborhood base.",
+        "weights": {"Location": 0.6, "WiFi/Quietness": 0.2, "Value": 0.1, "Cleanliness": 0.0, "Service": 0.0, "Accessibility": 0.1, "Family-Friendliness": 0.0}
     },
     "Foodie": {
-        "desc": "Culinary traveler, avid foodie, food-and-wine enthusiast, wants to be central to the restaurant scene, chasing great food and local dining.",
+        "desc": "Culinary traveler chasing food, local dining, authentic markets, and restaurant scenes.",
         "weights": {"Location": 0.5, "Service": 0.3, "Value": 0.2, "Cleanliness": 0.0, "Accessibility": 0.0, "WiFi/Quietness": 0.0, "Family-Friendliness": 0.0}
     },
     "Beach-Holiday": {
-        "desc": "Couple looking for beach breaks, beach-holiday traveler, sun-seeker, direct beach access, coastal relaxation, would love a spa to unwind, prefers direct flights.",
+        "desc": "Couple looking for beach breaks, direct beach access, and coastal relaxation.",
         "weights": {"Location": 0.6, "Service": 0.3, "Cleanliness": 0.1, "Value": 0.0, "Accessibility": 0.0, "WiFi/Quietness": 0.0, "Family-Friendliness": 0.0}
     },
     "Remote-Worker": {
         "desc": "Digital nomad needing fast WiFi, workspace, and quiet room for calls.",
-        "weights": {"WiFi/Quietness": 0.7, "Value": 0.2, "Location": 0.1, "Cleanliness": 0.0, "Service": 0.0, "Accessibility": 0.0, "Family-Friendliness": 0.0}
+        "weights": {"WiFi/Quietness": 0.7, "Value": 0.0, "Location": 0.1, "Cleanliness": 0.0, "Service": 0.2, "Accessibility": 0.0, "Family-Friendliness": 0.0}
     },
     "Group-Leisure": {
-        "desc": "Bachelor/bachelorette group, group of friends on a city break, fine with multi-city legs, wants to be central to the action, near nightlife and bars, splitting costs so value matters.",
+        "desc": "Group of friends on a city break, splitting costs, near nightlife and bars.",
         "weights": {"Value": 0.4, "Location": 0.4, "Service": 0.2, "Cleanliness": 0.0, "Accessibility": 0.0, "WiFi/Quietness": 0.0, "Family-Friendliness": 0.0}
-    },
-    "Romantic": {
-        "desc": "Honeymooning couple on a romantic getaway, wants a spa and wellness facilities, appreciates attentive personal service, prefers a quiet, peaceful room, happy with a higher budget for the right vibe.",
-        "weights": {"Service": 0.4, "Cleanliness": 0.3, "WiFi/Quietness": 0.3, "Location": 0.0, "Value": 0.0, "Accessibility": 0.0, "Family-Friendliness": 0.0}
     }
 }
 
@@ -196,7 +192,7 @@ def extract_aspect_weights(desc: str) -> dict:
         max_idx = torch.argmax(cos_scores).item()
         max_score = cos_scores[max_idx].item()
         
-        if max_score > 0.60:
+        if max_score > 0.85:
             matched_arch = _archetype_names[max_idx]
             weights = ARCHETYPES[matched_arch]["weights"].copy()
             
