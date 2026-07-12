@@ -138,6 +138,7 @@ st.markdown("""
         color: #FCA5A5;
     }
 </style>
+""", unsafe_allow_html=True)
 
 
 
