@@ -82,6 +82,27 @@ def extract_traveler_cohort(desc: str) -> str:
         return "group"
     return "leisure"
 
+def infer_review_traveler_type(review: dict) -> str:
+    """Gets traveler type from review dict, or infers it from review text if missing."""
+    t_type = review.get("traveler_type")
+    if t_type:
+        return t_type.lower()
+        
+    text_lower = review.get("review_text", "").lower()
+    
+    if any(w in text_lower for w in ["kids", "children", "toddler", "family", "our son", "our daughter", "connecting room"]):
+        return "family"
+    if any(w in text_lower for w in ["husband", "wife", "partner", "couple", "romantic", "anniversary", "getaway", "honeymoon"]):
+        return "couple"
+    if any(w in text_lower for w in ["business", "conference", "work", "meeting", "meeting room", "facilities for work", "office district"]):
+        return "business"
+    if any(w in text_lower for w in ["friends", "group", "splitting", "buddies", "colleagues"]):
+        return "group"
+    if any(w in text_lower for w in ["solo", "alone", "myself", "independent", "single"]):
+        return "solo"
+        
+    return "leisure"
+
 def get_user_profiles(profiles_path: str) -> dict:
     """Load and parse traveler profiles from JSON file."""
     with open(profiles_path, "r", encoding="utf-8") as f:
@@ -297,7 +318,7 @@ class Recommender:
         for rec in recommended:
             hotel_id = rec["hotel_id"]
             hotel_reviews = [r for r in self.reviews if r["hotel_id"] == hotel_id]
-            cohort_reviews = [r for r in hotel_reviews if r.get("traveler_type") == target_cohort]
+            cohort_reviews = [r for r in hotel_reviews if infer_review_traveler_type(r) == target_cohort]
             
             # Prioritize the cohort pool if there are enough reviews, otherwise default to all
             reviews_pool = cohort_reviews if len(cohort_reviews) >= 3 else hotel_reviews
