@@ -32,7 +32,7 @@ def compile_aspect_scorecard(reviews: list[dict]) -> dict:
     Formula:
         Aspect Score = 3.0 + 2.0 * ((Positive Count - Negative Count) / Total Count)
         
-    Defaults to the hotel's average overall rating (or 3.0 if no reviews exist) if Total Count is 0.
+    Defaults to NaN if Total Count is 0.
     
     Returns:
         dict: { hotel_id: { aspect_name: float_score } }
